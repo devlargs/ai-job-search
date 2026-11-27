@@ -99,3 +99,46 @@ body {
     border-color: #b38600;
   }
 }
+
+.preference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.9rem;
+}
+
+.field-keywords {
+  flex: 1 1 16rem;
+}
+
+.field-min input {
+  width: 6rem;
+}
+
+.field input,
+.preference button {
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+}
+
+.preference-status {
+  flex-basis: 100%;
+  margin: 0;
+  min-height: 1.2em;
+  font-size: 0.85rem;
+}
+
+.preference-status .error {
+  color: #c0362c;
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FeedItem, FeedResponse, SourceId } from '@ai-job-search/shared';
 import { fetchFeed } from './api.js';
 import { EligibilityBadge } from './EligibilityBadge.js';
+import { PreferenceForm } from './PreferenceForm.js';
 import { ResumeStatusBanner } from './ResumeStatusBanner.js';
 
 type State =
@@ -40,9 +41,11 @@ function ListingRow({ item }: { item: FeedItem }) {
 
 export function App() {
   const [state, setState] = useState<State>({ status: 'loading' });
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
+    setState({ status: 'loading' });
     fetchFeed(controller.signal)
       .then((feed) => setState({ status: 'ready', feed }))
       .catch((err: unknown) => {
@@ -50,7 +53,7 @@ export function App() {
         setState({ status: 'error', message: err instanceof Error ? err.message : String(err) });
       });
     return () => controller.abort();
-  }, []);
+  }, [reload]);
 
   const isEmpty =
     state.status === 'ready' && TIERS.every(({ key }) => state.feed.tiers[key].length === 0);
@@ -58,6 +61,7 @@ export function App() {
   return (
     <main className="page">
       <h1>Job feed</h1>
+      <PreferenceForm onSaved={() => setReload((n) => n + 1)} />
       {state.status === 'loading' && <p className="status">Loading listings…</p>}
       {state.status === 'error' && (
         <p className="status error" role="alert">

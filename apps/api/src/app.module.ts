@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ListingsModule } from './listings/listings.module.js';
+import { PreferenceModule } from './preference/preference.module.js';
 
 /** apps/web/dist, resolved from this file (apps/api/dist/app.module.js or apps/api/src/app.module.ts). */
 const WEB_DIST = fileURLToPath(new URL('../../web/dist', import.meta.url));
@@ -26,6 +27,7 @@ const ROOT_ENV = fileURLToPath(new URL('../../../.env', import.meta.url));
       exclude: ['/api/{*path}'],
     }),
     ListingsModule,
+    PreferenceModule,
   ],
 })
 export class AppModule {}

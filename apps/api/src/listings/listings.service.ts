@@ -1,31 +1,51 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { SourceId, type FeedItem, type FeedResponse } from '@ai-job-search/shared';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { DEFAULT_PREFERENCE, SourceId, type FeedItem, type FeedResponse, type Preference } from '@ai-job-search/shared';
 import { ListingsReader, type FeedListing } from '../ingestion/listings-reader.js';
 import { matchScore } from '../matching/match-score.js';
+import { MatchingRules } from '../matching/matching.module.js';
+import { passesPreference } from '../matching/preference-match.js';
+import { PreferenceService } from '../preference/preference.service.js';
 import { ResumeSkills } from '../resume/resume-skills.js';
 import { groupIntoTiers } from './feed-tiers.js';
 
-/** Scored listings below this are hidden (AD-4 step 4). Story 1.7 makes it the preference's `minMatch` (AD-9). */
-export const DEFAULT_MIN_MATCH = 40;
-
 @Injectable()
 export class ListingsService {
+  private readonly logger = new Logger('Listings');
+
   constructor(
     private readonly reader: ListingsReader,
     @Inject(ResumeSkills) private readonly resume: ResumeSkills,
+    @Inject(PreferenceService) private readonly preference: PreferenceService,
+    @Inject(MatchingRules) private readonly rules: MatchingRules,
   ) {}
 
   /**
-   * The feed at `now` (AD-4): non-restricted listings, each scored against the
-   * resume skill set, scored ones below minMatch dropped, then grouped into
+   * The feed at `now` (AD-4): non-restricted listings, filtered by the active
+   * preference's keywords (AD-9), each scored against the resume skill set,
+   * scored ones below the preference's minMatch dropped, then grouped into
    * freshness tiers. No resume module yet, so `resumeStatus` is always `none`.
    */
   async getFeed(now: Date = new Date()): Promise<FeedResponse> {
-    const [docs, resumeSkills] = await Promise.all([this.reader.findFeed(), this.resume.resumeSkillSet()]);
+    const [docs, resumeSkills, pref] = await Promise.all([
+      this.reader.findFeed(),
+      this.resume.resumeSkillSet(),
+      this.readPreference(),
+    ]);
     const items = docs
+      .filter((doc) => passesPreference({ title: doc.title, skills: doc.skills }, pref.roleKeywords, this.rules.skills))
       .map((doc) => toFeedItem(doc, matchScore(doc.skills ?? [], resumeSkills)))
-      .filter((item) => item.score === null || item.score >= DEFAULT_MIN_MATCH);
+      .filter((item) => item.score === null || item.score >= pref.minMatch);
     return { resumeStatus: 'none', tiers: groupIntoTiers(items, now) };
+  }
+
+  /** The active preference; the defaults when it can't be read, so the feed stays 200. */
+  private async readPreference(): Promise<Preference> {
+    try {
+      return await this.preference.get();
+    } catch (err) {
+      this.logger.warn(`Could not read the preference, using defaults: ${err instanceof Error ? err.message : String(err)}`);
+      return DEFAULT_PREFERENCE;
+    }
   }
 }
 

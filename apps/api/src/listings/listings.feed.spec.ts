@@ -1,25 +1,29 @@
-import { HttpStatus, type ArgumentsHost } from '@nestjs/common';
+import { HttpStatus, Logger, type ArgumentsHost } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { Model } from 'mongoose';
-import { FeedResponse } from '@ai-job-search/shared';
+import { DEFAULT_PREFERENCE, FeedResponse, type Preference } from '@ai-job-search/shared';
 import { ErrorEnvelopeFilter } from '../common/error-envelope.filter.js';
 import type { Listing } from '../ingestion/listing.schema.js';
 import { ListingsReader, type StoredListing } from '../ingestion/listings-reader.js';
+import { MatchingRules } from '../matching/matching.module.js';
+import { loadMatchingRules } from '../matching/rules.js';
+import type { PreferenceService } from '../preference/preference.service.js';
 import type { ResumeSkills } from '../resume/resume-skills.js';
-import { DEFAULT_MIN_MATCH, ListingsService } from './listings.service.js';
+import { ListingsService } from './listings.service.js';
 
 function stored(
   id: string,
   effectiveDate: string,
   eligibility: StoredListing['eligibility'] = 'worldwide',
   skills: string[] = [],
+  title = `Job ${id}`,
 ): StoredListing {
   return {
     _id: { toString: () => id },
     source: 'remotive',
     sourceJobId: id,
     url: `https://remotive.com/remote-jobs/x-${id}`,
-    title: `Job ${id}`,
+    title,
     company: 'Acme',
     descriptionHtml: '',
     locationText: null,
@@ -38,13 +42,22 @@ const NOW = new Date('2026-11-27T12:00:00.000Z');
 
 const noResume = { resumeSkillSet: async () => null } as ResumeSkills;
 
-function serviceOver(docs: StoredListing[], resume: ResumeSkills = noResume) {
+const loaded = loadMatchingRules();
+const rules = new MatchingRules(loaded.eligibility, loaded.skills, loaded.hash);
+
+const prefOf = (p: Preference) => ({ get: vi.fn(async () => p) }) as unknown as PreferenceService;
+
+function serviceOver(
+  docs: StoredListing[],
+  resume: ResumeSkills = noResume,
+  preference: PreferenceService = prefOf(DEFAULT_PREFERENCE),
+) {
   const sort = vi.fn();
   const chain = { sort, lean: () => chain, exec: async () => docs };
   sort.mockReturnValue(chain);
   const find = vi.fn(() => chain);
   const model = { find } as unknown as Model<Listing>;
-  return { service: new ListingsService(new ListingsReader(model), resume), find, sort };
+  return { service: new ListingsService(new ListingsReader(model), resume, preference, rules), find, sort };
 }
 
 const allItems = (feed: FeedResponse) => [...feed.tiers.fresh, ...feed.tiers.recent, ...feed.tiers.older];
@@ -108,7 +121,7 @@ describe('feed read', () => {
   });
 
   it('drops scored items below minMatch, keeps unscored ones, and orders by score', async () => {
-    expect(DEFAULT_MIN_MATCH).toBe(40);
+    expect(DEFAULT_PREFERENCE.minMatch).toBe(40);
     // 4 of 5 skills -> 80; 7 of 18 -> 39; no skills -> null.
     const many = Array.from({ length: 18 }, (_, i) => `s${i}`);
     const resume = { resumeSkillSet: async () => new Set(['s0', 's1', 's2', 's3', 's4', 's5', 's6']) } as ResumeSkills;
@@ -125,6 +138,71 @@ describe('feed read', () => {
       ['80', 80],
       ['null', null],
     ]);
+  });
+
+  it('keeps only listings whose title or skills match a keyword', async () => {
+    const docs = [
+      stored('a', '2026-11-27T10:00:00.000Z', 'worldwide', ['vue'], 'Senior Frontend Engineer'),
+      stored('b', '2026-11-27T09:00:00.000Z', 'worldwide', ['react'], 'UI Engineer'),
+      stored('c', '2026-11-27T08:00:00.000Z', 'worldwide', ['go'], 'Backend Dev'),
+      stored('d', '2026-11-27T07:00:00.000Z', 'worldwide', ['javascript'], 'JavaScript Developer'),
+      { ...stored('legacy', '2026-11-27T06:00:00.000Z', 'worldwide', [], 'Platform Engineer'), skills: undefined } as unknown as StoredListing,
+    ];
+    const pref = prefOf({ roleKeywords: ['Frontend', 'React'], minMatch: 40 });
+
+    const feed = await serviceOver(docs, noResume, pref).service.getFeed(NOW);
+
+    expect(FeedResponse.safeParse(feed).success).toBe(true);
+    expect(allItems(feed).map((i) => i.id)).toEqual(['a', 'b']);
+  });
+
+  it('does not let a Java keyword match a JavaScript listing', async () => {
+    const docs = [stored('d', '2026-11-27T07:00:00.000Z', 'worldwide', ['javascript'], 'JavaScript Developer')];
+    const feed = await serviceOver(docs, noResume, prefOf({ roleKeywords: ['Java'], minMatch: 40 })).service.getFeed(NOW);
+    expect(allItems(feed)).toEqual([]);
+  });
+
+  it('passes every listing with empty keywords', async () => {
+    const docs = [
+      stored('a', '2026-11-27T10:00:00.000Z', 'worldwide', [], 'Frontend'),
+      stored('b', '2026-11-27T09:00:00.000Z', 'worldwide', [], 'Backend'),
+    ];
+    const feed = await serviceOver(docs, noResume, prefOf({ roleKeywords: [], minMatch: 40 })).service.getFeed(NOW);
+    expect(allItems(feed)).toHaveLength(2);
+  });
+
+  it("uses the preference's minMatch: 80 and null kept, 60 dropped at 70", async () => {
+    const resume = { resumeSkillSet: async () => new Set(['s0', 's1', 's2', 's3', 's4', 's5']) } as ResumeSkills;
+    const docs = [
+      stored('80', '2026-11-27T10:00:00.000Z', 'worldwide', ['s0', 's1', 's2', 's3', 'zz']),
+      stored('60', '2026-11-27T09:00:00.000Z', 'worldwide', ['s0', 's1', 's2', 'y1', 'y2']),
+      stored('null', '2026-11-27T08:00:00.000Z', 'worldwide', []),
+    ];
+
+    const at70 = await serviceOver(docs, resume, prefOf({ roleKeywords: [], minMatch: 70 })).service.getFeed(NOW);
+    const at40 = await serviceOver(docs, resume, prefOf({ roleKeywords: [], minMatch: 40 })).service.getFeed(NOW);
+
+    expect(at70.tiers.fresh.map((i) => [i.id, i.score])).toEqual([
+      ['80', 80],
+      ['null', null],
+    ]);
+    expect(at40.tiers.fresh.map((i) => i.id)).toEqual(['80', '60', 'null']);
+  });
+
+  it('falls back to the defaults and warns when the preference read fails', async () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const failing = { get: vi.fn(async () => { throw new Error('connection refused'); }) } as unknown as PreferenceService;
+    const docs = [
+      stored('a', '2026-11-27T10:00:00.000Z', 'worldwide', [], 'Frontend'),
+      stored('b', '2026-11-27T09:00:00.000Z', 'worldwide', [], 'Backend'),
+    ];
+
+    const feed = await serviceOver(docs, noResume, failing).service.getFeed(NOW);
+
+    expect(FeedResponse.safeParse(feed).success).toBe(true);
+    expect(allItems(feed)).toHaveLength(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('connection refused'));
+    warn.mockRestore();
   });
 
   it('turns a database error into a 500 error envelope', () => {
