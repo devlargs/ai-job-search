@@ -1,0 +1,18 @@
+{
+  "name": "ai-job-search",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=24.9"
+  },
+  "scripts": {
+    "build": "pnpm --filter @ai-job-search/shared build && pnpm --filter @ai-job-search/web build && pnpm --filter @ai-job-search/api build",
+    "start": "node apps/api/dist/main.js",
+    "dev": "pnpm --filter @ai-job-search/shared build && pnpm --parallel --filter @ai-job-search/api --filter @ai-job-search/web dev",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  }
+}

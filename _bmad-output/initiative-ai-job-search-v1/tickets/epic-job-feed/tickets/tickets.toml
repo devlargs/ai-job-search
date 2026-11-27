@@ -1,0 +1,124 @@
+# Stories of epic-job-feed, in build order. AD-n refers to the architecture spine.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Remotive listings show on the local feed page"
+description = "Tracer bullet. First checks Remotive's API terms and fields (R1 verification for this one board). Scaffolds the pnpm monorepo per the spine (Nest 12 ESM API, Vite React web, packages/shared with ListingDraft), connects local MongoDB, and runs a single-flight in-process schedule at boot and every FETCH_INTERVAL_MIN that fetches Remotive through the JobSource port, sanitizes descriptionHtml, and upserts listings with $setOnInsert firstSeenAt/postedAt/effectiveDate (AD-1, AD-2, AD-3, AD-8). GET /api/feed returns stored listings newest effectiveDate first and the web page lists them, without waiting on any fetch."
+verify = "After `pnpm build && pnpm start`, localhost:3000 lists current Remotive jobs; restarting with the network off still shows them instantly; the Remotive adapter's fixture test and the effectiveDate tests pass."
+covers = ["R1", "R2", "R6"]
+after = []
+hitl = true # the user upgrades to Node 24 and runs the Nest/Vite starters and mongod
+risk = "high"
+
+[[entry]]
+id = 2
+type = "spike"
+title = "Which of the other 7 boards can we fetch, and how?"
+description = "Probes RemoteOK, We Work Remotely, Himalayas, Jobicy, OnlineJobs.ph, Jobstreet and Kalibrr: feed type (API, RSS, HTML), fields that map to ListingDraft (postedAt, location fields), rate limits, and terms on automated access. Records a verdict per board (adopt API/RSS, adopt HTML, or drop), saves one fixture payload per adopted board, and names each board's eligibilityHint. Time box: half a day."
+verify = "A results table in the spike file lists all 7 boards with a verdict and reason, each adopted board has a fixture file, and the user has signed off on the list."
+covers = ["R1"]
+after = []
+hitl = true # the user signs off on which boards are adopted
+risk = "high"
+
+[[entry]]
+id = 3
+type = "story"
+title = "Restricted listings never reach the feed"
+description = "Adds the matching module's tagEligibility with matching/data/eligibility-rules.json and the AD-4 precedence (structured location fields, then source hint, then description phrases; restricted wins), stores eligibility at ingest, stores rulesHash and re-derives tags at boot when the rule files change, filters restricted out of GET /api/feed, and shows the shared unknown badge."
+verify = "Fixture listings saying 'US only', 'Worldwide', 'APAC' and nothing at all come out restricted, worldwide, apac and unknown; only the last three show in the feed, unknown with a badge; editing a rule and restarting re-tags stored listings."
+covers = ["R3"]
+after = [1]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 4
+type = "story"
+title = "Fetch runs are recorded, incremental and pruned"
+description = "Adds the source_runs record per source per run, fetches with since = lastSuccessAt, keeps other sources running when one adapter throws, logs one summary line per run, and deletes listings whose lastSeenAt is older than RETENTION_DAYS (AD-1, AD-3)."
+verify = "With one adapter forced to throw, the run log shows that source's error while the others' listings still update; source_runs shows one record per source per run; a listing aged past RETENTION_DAYS is gone after the next run."
+covers = ["R2"]
+after = [3]
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 5
+type = "story"
+title = "The feed is grouped into freshness tiers"
+description = "GET /api/feed returns fresh (≤24h), recent (>24h to 72h) and older (>72h) tiers by effectiveDate, each ordered by score then date, carries resumeStatus, and the web shows the three tiers and the shared 'no resume yet' banner while resumeStatus is none (AD-4). Until epic-resume-tailoring sets it, resumeStatus is always none."
+verify = "Fixture listings at 2h, 30h and 5 days land in fresh, recent and older; the page shows the three tiers and the banner; tier-edge unit tests pass."
+covers = ["R4"]
+after = [3]
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 6
+type = "story"
+title = "Every listing carries skills and a score slot"
+description = "Adds matching/data/skills.json (canonical SkillId to synonyms), extractSkills over title plus description text at ingest (re-derived with rulesHash), and matchScore returning null for empty job skills or no resume; the feed applies minMatch only to non-null scores. The feed reads the resume skill set through a stub resumeSkillSet() that returns null (no confirmed resume); epic-resume-tailoring replaces the stub (AD-4)."
+verify = "A listing mentioning 'ReactJS' and 'Nest.js' stores skills react and nestjs; with no resume every score is null and nothing is hidden; matchScore unit tests cover overlap, empty and null cases."
+covers = ["R4", "R5"]
+after = [4, 5]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 7
+type = "story"
+title = "The user sets a role preference that filters the feed"
+description = "Adds the single preference document (roleKeywords, minMatch default 40) with a settings form; a listing passes when any keyword matches, skill keywords through skills.json and other words on the title at a word boundary; empty keywords pass everything (AD-9)."
+verify = "Setting 'Frontend' and 'React' shows only listings with Frontend in the title or react in their skills; clearing the keywords shows everything again; minMatch saves and reloads."
+covers = ["R5", "R7"]
+after = [6]
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 8
+type = "story"
+title = "A listing opens to its full description and apply link"
+description = "Adds GET /api/listings/:id and a detail view that renders the sanitized descriptionHtml through the one JobDescription component, shows company, location, eligibility and dates, and links to the original posting url."
+verify = "Clicking a feed item shows its full description with formatting, and the apply link opens the original posting in a new tab; a description containing a script tag renders without it."
+covers = ["R8"]
+after = [7] # same listings module, feed controller and feed item as 5-7
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 9
+type = "story"
+title = "Listings arrive from every adopted API and RSS board"
+description = "Adds one adapter per API or RSS board the spike adopted, each mapping to ListingDraft with its eligibilityHint, tested against the spike's saved fixtures, and registered in SOURCES."
+verify = "After a run, the feed contains listings from every adopted API and RSS board, and every adapter's fixture test passes."
+covers = ["R1"]
+unknown = "Which boards and formats are adopted? Answered by the source spike (entry 2)."
+after = [2, 4]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 10
+type = "story"
+title = "Listings arrive from every adopted HTML board"
+description = "Adds one HTML-parsing adapter per board the spike adopted as HTML only, tested against saved fixtures. First to cut if the time box runs short (C7)."
+verify = "After a run, the feed contains listings from every adopted HTML board, and every adapter's fixture test passes."
+covers = ["R1"]
+unknown = "Which boards are adopted as HTML only? Answered by the source spike (entry 2)."
+after = [9]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 11
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only, scoped at its start from the plans and review findings this epic deferred."
+verify = "All tests pass and the deferred findings listed in its plan are resolved or recorded."
+covers = []
+after = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+hitl = false
+risk = "low"
