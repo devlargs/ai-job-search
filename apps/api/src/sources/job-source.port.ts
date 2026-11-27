@@ -11,7 +11,7 @@ export interface JobSource {
   readonly id: SourceId;
   /** The board's known eligibility default. Unused until eligibility tagging lands. */
   readonly eligibilityHint?: string;
-  /** Minimum minutes between successful runs; the pipeline enforces it. */
+  /** Minimum minutes between runs of any outcome; the pipeline enforces it. */
   readonly minIntervalMin?: number;
   fetch(since: Date | null): Promise<ListingDraft[]>;
 }

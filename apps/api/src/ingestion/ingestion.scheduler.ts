@@ -21,7 +21,8 @@ export class IngestionScheduler implements OnApplicationBootstrap, OnApplication
 
   onApplicationBootstrap(): void {
     const minutes = Number(this.config.get('FETCH_INTERVAL_MIN') ?? 30);
-    const intervalMin = Number.isFinite(minutes) && minutes > 0 ? minutes : 30;
+    // setInterval clamps delays above 2^31-1 ms (~35,791 min) to 1 ms, so cap well below that.
+    const intervalMin = Number.isFinite(minutes) && minutes > 0 && minutes <= 35_000 ? minutes : 30;
     const handle = setInterval(() => this.fire(), intervalMin * 60_000);
     this.registry.addInterval(INTERVAL_NAME, handle);
     this.logger.log(`Fetch scheduled every ${intervalMin} min`);

@@ -119,6 +119,13 @@ Greenfield: only `_bmad/`, `_bmad-output/`, `.claude/`, `.agents/` and `skills-l
   - `[low]` `[patch]` `findFeed()` typed `StoredListing[]` though `descriptionHtml` is projected out — fixed: returns `FeedListing[]` (`Omit<StoredListing,'descriptionHtml'>`), `toFeedItem` takes `FeedListing`.
   - `[low]` `[reject]` One malformed Remotive job (null entry / non-string location) throws in `toDraft` and fails the whole source — the live payload is well-formed and typed; per-item guards add complexity for an unlikely case.
 
+### 2026-11-27 — Review pass 2 (resumed)
+- verdicts: 3 findings — high 0, medium 0, low 3, false 0, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `JobSource.minIntervalMin` docstring still said "between successful runs" after the any-outcome throttle patch — fixed the comment. The matching intent-contract wording is not changed (the fix would edit this build's plan, which is rejected).
+  - `[low]` `[reject]` A Mongo error in the throttle/`lastOk` lookup is recorded as a failed run and throttles Remotive for 6 h without any request made — needs local mongod to fail then recover within one run; the fix adds a "request attempted" branch.
+  - `[low]` `[patch]` `FETCH_INTERVAL_MIN` above ~35,791 overflows `setInterval` to 1 ms — fixed: values above 35,000 fall back to 30.
+
 ## Design Notes
 
 - `minIntervalMin` is an addition to AD-2's port, made because the Remotive terms check found the 4-a-day limit. The global tick stays `FETCH_INTERVAL_MIN=30` for the boards added later, and the pipeline does the throttling, so the adapter stays pure.
