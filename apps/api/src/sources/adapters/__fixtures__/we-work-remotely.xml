@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss">
+  <channel>
+    <title>We Work Remotely: Remote jobs in design, programming, marketing and more</title>
+    <link>https://weworkremotely.com/remote-jobs.rss</link>
+    <description>We Work Remotely: Remote jobs in design, programming, marketing and more</description>
+    <language>en-US</language>
+    <ttl>60</ttl>
+    <item>
+      <media:content url="https://example.com/logos/acme-remote-co.png" type="image/png"/>
+      <title>Acme Remote Co: Senior Frontend Engineer (React)</title>
+      <region>Anywhere in the World</region>
+      <country></country>
+      <state>Ohio</state>
+      <skills></skills>
+      <category>All Other Remote</category>
+      <type>Contract</type>
+      <description>&lt;p&gt;&lt;strong&gt;About the role&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;Synthetic test listing 1. Build features in React and TypeScript with a small remote team.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;3+ years experience&lt;/li&gt;&lt;li&gt;Strong written English&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 27 Nov 2026 12:35:30 +0000</pubDate>
+      <expires_at>Sun, 27 Dec 2026 12:35:30 +0000</expires_at>
+      <guid>https://weworkremotely.com/remote-jobs/acme-remote-co-senior-frontend-engineer-react</guid>
+      <link>https://weworkremotely.com/remote-jobs/acme-remote-co-senior-frontend-engineer-react</link>
+    </item>
+    <item>
+      <media:content url="https://example.com/logos/globex-labs.png" type="image/png"/>
+      <title>Globex Labs: Backend Developer (Node.js)</title>
+      <region>Asia Only</region>
+      <country></country>
+      <state></state>
+      <skills></skills>
+      <category>Full-Stack Programming</category>
+      <type>Full-Time</type>
+      <description>&lt;p&gt;&lt;strong&gt;About the role&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;Synthetic test listing 2. Build features in React and TypeScript with a small remote team.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;3+ years experience&lt;/li&gt;&lt;li&gt;Strong written English&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 27 Nov 2026 11:20:51 +0000</pubDate>
+      <expires_at>Sun, 27 Dec 2026 11:20:29 +0000</expires_at>
+      <guid>https://weworkremotely.com/remote-jobs/globex-labs-backend-developer-node-js</guid>
+      <link>https://weworkremotely.com/remote-jobs/globex-labs-backend-developer-node-js</link>
+    </item>
+    <item>
+      <media:content url="https://example.com/logos/initech-cloud.png" type="image/png"/>
+      <title>Initech Cloud: Full-Stack Engineer</title>
+      <region>USA Only</region>
+      <country></country>
+      <state></state>
+      <skills></skills>
+      <category>Full-Stack Programming</category>
+      <type>Full-Time</type>
+      <description>&lt;p&gt;&lt;strong&gt;About the role&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;Synthetic test listing 3. Build features in React and TypeScript with a small remote team.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;3+ years experience&lt;/li&gt;&lt;li&gt;Strong written English&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 27 Nov 2026 12:40:39 +0000</pubDate>
+      <expires_at>Sun, 27 Dec 2026 12:40:29 +0000</expires_at>
+      <guid>https://weworkremotely.com/remote-jobs/initech-cloud-full-stack-engineer</guid>
+      <link>https://weworkremotely.com/remote-jobs/initech-cloud-full-stack-engineer</link>
+    </item>
+    <item>
+      <media:content url="https://example.com/logos/umbrella-apps.png" type="image/png"/>
+      <title>Umbrella Apps: QA Automation Engineer</title>
+      <region>USA Only</region>
+      <country></country>
+      <state></state>
+      <skills></skills>
+      <category>Full-Stack Programming</category>
+      <type>Full-Time</type>
+      <description>&lt;p&gt;&lt;strong&gt;About the role&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;Synthetic test listing 4. Build features in React and TypeScript with a small remote team.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;3+ years experience&lt;/li&gt;&lt;li&gt;Strong written English&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 27 Nov 2026 12:20:40 +0000</pubDate>
+      <expires_at>Sun, 27 Dec 2026 12:20:29 +0000</expires_at>
+      <guid>https://weworkremotely.com/remote-jobs/umbrella-apps-qa-automation-engineer</guid>
+      <link>https://weworkremotely.com/remote-jobs/umbrella-apps-qa-automation-engineer</link>
+    </item>
+  </channel>
+</rss>
