@@ -1,0 +1,100 @@
+{
+  "apiVersion": "2.3.05",
+  "documentationUrl": "https://jobi.cy/apidocs",
+  "friendlyNotice": "Thanks for using Jobicy API! Please ensure Jobicy is clearly credited with a direct link to the source, and all application buttons redirect to the original job URL provided in this feed. That\u2019s all! You might be building something amazing, we wish you the best of luck!",
+  "jobCount": 20,
+  "lastUpdate": "2026-11-27T09:35:18+00:00",
+  "nextCursor": "AwAAAABrCX6tAAAAAGsJTYIAAAAAAAKChJGStyjVOt7ULMvdFdHp_0xjGsH--7hP_G6cSgT0AUpIQSaWQFamB29q5J0XAnATVk3elJF8Gl8VKWmXSjucDKY",
+  "hasMore": true,
+  "appliedFilters": {
+    "count": 20
+  },
+  "jobs": [
+    {
+      "id": 1000,
+      "url": "https://jobicy.com/jobs/senior-frontend-engineer-react-acme-remote-co-1000",
+      "jobSlug": "senior-frontend-engineer-react-acme-remote-co-1000",
+      "jobTitle": "Senior Frontend Engineer (React)",
+      "companyName": "Acme Remote Co",
+      "companyLogo": "https://example.com/logos/acme-remote-co.png",
+      "jobIndustry": [
+        "Sales"
+      ],
+      "jobType": [
+        "Full-Time"
+      ],
+      "jobGeo": "USA",
+      "jobLevel": "Director",
+      "jobExcerpt": "Synthetic test listing 1.",
+      "jobDescription": "<p><strong>About the role</strong></p><p>Synthetic test listing 1. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+      "pubDate": "2026-11-27T09:30:07+00:00",
+      "salaryMin": 90000,
+      "salaryMax": 150000,
+      "salaryCurrency": "USD",
+      "salaryPeriod": "yearly"
+    },
+    {
+      "id": 1001,
+      "url": "https://jobicy.com/jobs/backend-developer-node-js-globex-labs-1001",
+      "jobSlug": "backend-developer-node-js-globex-labs-1001",
+      "jobTitle": "Backend Developer (Node.js)",
+      "companyName": "Globex Labs",
+      "companyLogo": "https://example.com/logos/globex-labs.png",
+      "jobIndustry": [
+        "Marketing & Sales"
+      ],
+      "jobType": [
+        "Full-Time"
+      ],
+      "jobGeo": "Poland,  UK,  USA",
+      "jobLevel": "Any",
+      "jobExcerpt": "Synthetic test listing 2.",
+      "jobDescription": "<p><strong>About the role</strong></p><p>Synthetic test listing 2. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+      "pubDate": "2026-11-27T09:35:06+00:00"
+    },
+    {
+      "id": 1002,
+      "url": "https://jobicy.com/jobs/full-stack-engineer-initech-cloud-1002",
+      "jobSlug": "full-stack-engineer-initech-cloud-1002",
+      "jobTitle": "Full-Stack Engineer",
+      "companyName": "Initech Cloud",
+      "companyLogo": "https://example.com/logos/initech-cloud.png",
+      "jobIndustry": [
+        "Marketing & Sales"
+      ],
+      "jobType": [
+        "Full-Time"
+      ],
+      "jobGeo": "Australia,  New Zealand",
+      "jobLevel": "Senior",
+      "jobExcerpt": "Synthetic test listing 3.",
+      "jobDescription": "<p><strong>About the role</strong></p><p>Synthetic test listing 3. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+      "pubDate": "2026-11-27T03:45:33+00:00"
+    },
+    {
+      "id": 1003,
+      "url": "https://jobicy.com/jobs/qa-automation-engineer-umbrella-apps-1003",
+      "jobSlug": "qa-automation-engineer-umbrella-apps-1003",
+      "jobTitle": "QA Automation Engineer",
+      "companyName": "Umbrella Apps",
+      "companyLogo": "https://example.com/logos/umbrella-apps.png",
+      "jobIndustry": [
+        "Web, UI & UX Design"
+      ],
+      "jobType": [
+        "Contract"
+      ],
+      "jobGeo": "Philippines",
+      "jobLevel": "Senior",
+      "jobExcerpt": "Synthetic test listing 4.",
+      "jobDescription": "<p><strong>About the role</strong></p><p>Synthetic test listing 4. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+      "pubDate": "2026-11-27T03:40:38+00:00",
+      "salaryMin": 500,
+      "salaryMax": 500,
+      "salaryCurrency": "USD",
+      "salaryPeriod": "monthly"
+    }
+  ],
+  "statusCode": 200,
+  "success": true
+}

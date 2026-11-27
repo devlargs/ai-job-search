@@ -1,0 +1,90 @@
+[
+  {
+    "last_updated": 1795773631,
+    "legal": "API Terms of Service: Please link back (with follow, and without nofollow!) to the URL on Remote OK and mention Remote OK as a source, so we get traffic back from your site. If you do not we'll have to suspend API access.\n\nPlease don't use the Remote OK logo without written permission as it's a registered trademark, please DO use our name Remote OK though."
+  },
+  {
+    "slug": "senior-frontend-engineer-react-acme-remote-co-1000",
+    "id": "1000",
+    "epoch": 1795516803,
+    "date": "2026-11-24T10:40:03+00:00",
+    "company": "Acme Remote Co",
+    "company_logo": "https://example.com/logos/acme-remote-co.png",
+    "position": "Senior Frontend Engineer (React)",
+    "tags": [
+      "react",
+      "typescript"
+    ],
+    "description": "<p><strong>About the role</strong></p><p>Synthetic test listing 1. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+    "location": "Worldwide",
+    "apply_url": "https://remoteOK.com/remote-jobs/senior-frontend-engineer-react-acme-remote-co-1000",
+    "original": true,
+    "verified": true,
+    "salary_min": 0,
+    "salary_max": 0,
+    "logo": "https://example.com/logos/acme-remote-co.png",
+    "url": "https://remoteOK.com/remote-jobs/senior-frontend-engineer-react-acme-remote-co-1000"
+  },
+  {
+    "slug": "backend-developer-node-js-globex-labs-1001",
+    "id": "1001",
+    "epoch": 1795514405,
+    "date": "2026-11-24T10:00:05+00:00",
+    "company": "Globex Labs",
+    "company_logo": "https://example.com/logos/globex-labs.png",
+    "position": "Backend Developer (Node.js)",
+    "tags": [
+      "react",
+      "typescript"
+    ],
+    "description": "<p><strong>About the role</strong></p><p>Synthetic test listing 2. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+    "location": "Asia",
+    "apply_url": "https://remoteOK.com/remote-jobs/backend-developer-node-js-globex-labs-1001",
+    "original": true,
+    "salary_min": 0,
+    "salary_max": 0,
+    "logo": "https://example.com/logos/globex-labs.png",
+    "url": "https://remoteOK.com/remote-jobs/backend-developer-node-js-globex-labs-1001"
+  },
+  {
+    "slug": "full-stack-engineer-initech-cloud-1002",
+    "id": "1002",
+    "epoch": 1795696829,
+    "date": "2026-11-26T12:40:29+00:00",
+    "company": "Initech Cloud",
+    "company_logo": "https://example.com/logos/initech-cloud.png",
+    "position": "Full-Stack Engineer",
+    "tags": [
+      "react",
+      "typescript"
+    ],
+    "description": "<p><strong>About the role</strong></p><p>Synthetic test listing 3. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+    "location": "US Only",
+    "apply_url": "https://remoteOK.com/remote-jobs/full-stack-engineer-initech-cloud-1002",
+    "original": true,
+    "salary_min": 0,
+    "salary_max": 0,
+    "logo": "https://example.com/logos/initech-cloud.png",
+    "url": "https://remoteOK.com/remote-jobs/full-stack-engineer-initech-cloud-1002"
+  },
+  {
+    "slug": "qa-automation-engineer-umbrella-apps-1003",
+    "id": "1003",
+    "epoch": 1795507211,
+    "date": "2026-11-24T08:00:11+00:00",
+    "company": "Umbrella Apps",
+    "company_logo": "https://example.com/logos/umbrella-apps.png",
+    "position": "QA Automation Engineer",
+    "tags": [
+      "react",
+      "typescript"
+    ],
+    "description": "<p><strong>About the role</strong></p><p>Synthetic test listing 4. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+    "location": "",
+    "apply_url": "https://remoteOK.com/remote-jobs/qa-automation-engineer-umbrella-apps-1003",
+    "salary_min": 0,
+    "salary_max": 0,
+    "logo": "https://example.com/logos/umbrella-apps.png",
+    "url": "https://remoteOK.com/remote-jobs/qa-automation-engineer-umbrella-apps-1003"
+  }
+]

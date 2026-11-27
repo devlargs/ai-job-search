@@ -1,0 +1,213 @@
+{
+  "comments": "21/08/2026: Cursor pagination is now available and is the preferred way to page through the feed. Pass the nextCursor value from each response back as ?cursor=. It is faster than offset and will never return the same job twice. The offset parameter is deprecated and will be removed in a future release. 13/03/2026: The API has been updated to include the companySlug field in the response.",
+  "updatedAt": 1795779217,
+  "offset": 0,
+  "limit": 20,
+  "totalCount": 116969,
+  "nextCursor": "MjAyNi0xMS0yN1QxMToyODoxNC41MDAzODRafDIyNDM3MjI",
+  "jobs": [
+    {
+      "title": "Senior Frontend Engineer (React)",
+      "excerpt": "Synthetic test listing 1.",
+      "companyName": "Acme Remote Co",
+      "companySlug": "acme-remote-co",
+      "companyLogo": "https://example.com/logos/acme-remote-co.png",
+      "employmentType": "Full Time",
+      "minSalary": null,
+      "maxSalary": null,
+      "salaryPeriod": "annual",
+      "seniority": [
+        "Mid-level"
+      ],
+      "currency": null,
+      "locationRestrictions": [
+        "Colombia",
+        "Honduras",
+        "India",
+        "Mexico",
+        "Philippines"
+      ],
+      "timezoneRestrictions": [
+        -8,
+        -7,
+        -6,
+        -5,
+        5.5,
+        8
+      ],
+      "categories": [
+        "Software-Engineering"
+      ],
+      "parentCategories": [
+        "Software-Engineering"
+      ],
+      "description": "<p><strong>About the role</strong></p><p>Synthetic test listing 1. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+      "pubDate": 1795779217,
+      "expiryDate": 1800963217,
+      "applicationLink": "https://himalayas.app/companies/example/jobs/senior-frontend-engineer-react-acme-remote-co-1000?utm_source=api",
+      "guid": "https://himalayas.app/companies/example/jobs/senior-frontend-engineer-react-acme-remote-co-1000"
+    },
+    {
+      "title": "Backend Developer (Node.js)",
+      "excerpt": "Synthetic test listing 2.",
+      "companyName": "Globex Labs",
+      "companySlug": "globex-labs",
+      "companyLogo": "https://example.com/logos/globex-labs.png",
+      "employmentType": "Part Time",
+      "minSalary": null,
+      "maxSalary": null,
+      "salaryPeriod": "annual",
+      "seniority": [
+        "Director"
+      ],
+      "currency": null,
+      "locationRestrictions": [
+        "United States"
+      ],
+      "timezoneRestrictions": [
+        -10,
+        -9,
+        -8,
+        -7,
+        -6,
+        -5,
+        14
+      ],
+      "categories": [
+        "Software-Engineering"
+      ],
+      "parentCategories": [
+        "Software-Engineering"
+      ],
+      "description": "<p><strong>About the role</strong></p><p>Synthetic test listing 2. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+      "pubDate": 1795778994,
+      "expiryDate": 1800962993,
+      "applicationLink": "https://himalayas.app/companies/example/jobs/backend-developer-node-js-globex-labs-1001?utm_source=api",
+      "guid": "https://himalayas.app/companies/example/jobs/backend-developer-node-js-globex-labs-1001"
+    },
+    {
+      "title": "Full-Stack Engineer",
+      "excerpt": "Synthetic test listing 3.",
+      "companyName": "Initech Cloud",
+      "companySlug": "initech-cloud",
+      "companyLogo": "https://example.com/logos/initech-cloud.png",
+      "employmentType": "Full Time",
+      "minSalary": null,
+      "maxSalary": null,
+      "salaryPeriod": "annual",
+      "seniority": [
+        "Executive"
+      ],
+      "currency": null,
+      "locationRestrictions": [
+        "Albania",
+        "Andorra",
+        "Austria",
+        "Belarus",
+        "Belgium",
+        "Bosnia and Herzegovina",
+        "Bulgaria",
+        "Croatia",
+        "Cyprus",
+        "Czechia",
+        "Denmark",
+        "Estonia",
+        "Faroe Islands",
+        "Finland",
+        "France",
+        "Germany",
+        "Gibraltar",
+        "Greece",
+        "Guernsey",
+        "Holy See (Vatican City State)",
+        "Hungary",
+        "Iceland",
+        "Ireland",
+        "Isle of Man",
+        "Italy",
+        "Jersey",
+        "Kosovo",
+        "Latvia",
+        "Liechtenstein",
+        "Lithuania",
+        "Luxembourg",
+        "Malta",
+        "Moldova",
+        "Monaco",
+        "Montenegro",
+        "Netherlands",
+        "North Macedonia",
+        "Norway",
+        "Poland",
+        "Portugal",
+        "Romania",
+        "San Marino",
+        "Serbia",
+        "Slovakia",
+        "Slovenia",
+        "Spain",
+        "Svalbard and Jan Mayen",
+        "Sweden",
+        "Switzerland",
+        "Ukraine",
+        "United Kingdom",
+        "\u00c5land Islands"
+      ],
+      "timezoneRestrictions": [
+        -1,
+        0,
+        1,
+        2,
+        3
+      ],
+      "categories": [
+        "Software-Engineering"
+      ],
+      "parentCategories": [
+        "Software-Engineering"
+      ],
+      "description": "<p><strong>About the role</strong></p><p>Synthetic test listing 3. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+      "pubDate": 1795778901,
+      "expiryDate": 1800960102,
+      "applicationLink": "https://himalayas.app/companies/example/jobs/full-stack-engineer-initech-cloud-1002?utm_source=api",
+      "guid": "https://himalayas.app/companies/example/jobs/full-stack-engineer-initech-cloud-1002"
+    },
+    {
+      "title": "QA Automation Engineer",
+      "excerpt": "Synthetic test listing 4.",
+      "companyName": "Umbrella Apps",
+      "companySlug": "umbrella-apps",
+      "companyLogo": "https://example.com/logos/umbrella-apps.png",
+      "employmentType": "Contractor",
+      "minSalary": 170000,
+      "maxSalary": 180000,
+      "salaryPeriod": "annual",
+      "seniority": [
+        "Senior"
+      ],
+      "currency": "AUD",
+      "locationRestrictions": [
+        "Australia"
+      ],
+      "timezoneRestrictions": [
+        8,
+        8.75,
+        9,
+        9.5,
+        10,
+        10.5
+      ],
+      "categories": [
+        "Software-Engineering"
+      ],
+      "parentCategories": [
+        "Software-Engineering"
+      ],
+      "description": "<p><strong>About the role</strong></p><p>Synthetic test listing 4. Build features in React and TypeScript with a small remote team.</p><ul><li>3+ years experience</li><li>Strong written English</li></ul>",
+      "pubDate": 1795778904,
+      "expiryDate": 1800962903,
+      "applicationLink": "https://himalayas.app/companies/example/jobs/qa-automation-engineer-umbrella-apps-1003?utm_source=api",
+      "guid": "https://himalayas.app/companies/example/jobs/qa-automation-engineer-umbrella-apps-1003"
+    }
+  ]
+}
