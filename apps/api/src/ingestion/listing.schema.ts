@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Eligibility } from '@ai-job-search/shared';
 import type { HydratedDocument } from 'mongoose';
 
 /** Owned by ingestion, its only writer (AD-3). Other modules read via ListingsReader. */
@@ -39,6 +40,13 @@ export class Listing {
 
   @Prop({ type: Date, required: true })
   lastSeenAt!: Date;
+
+  @Prop({ type: String, enum: Eligibility.options, default: 'unknown', index: true })
+  eligibility!: Eligibility;
+
+  /** Hash of the matching/data/*.json files this listing was tagged with (AD-3). */
+  @Prop({ type: String, default: null })
+  rulesHash!: string | null;
 }
 
 export type ListingDocument = HydratedDocument<Listing>;

@@ -21,6 +21,16 @@ const OPTIONS: sanitizeHtmlLib.IOptions = {
   },
 };
 
+/**
+ * Plain text of (already sanitized) HTML, with every tag stripped, for phrase matching.
+ * A space is put before each tag so adjacent blocks (`</li><li>`) do not run words together.
+ */
+export function htmlToText(html: string): string {
+  return sanitizeHtmlLib(html.replace(/</g, ' <'), { allowedTags: [], allowedAttributes: {} })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** The one allowlist sanitizer for stored `descriptionHtml` (AD-3). */
 export function sanitizeHtml(html: string): string {
   return sanitizeHtmlLib(html, OPTIONS);

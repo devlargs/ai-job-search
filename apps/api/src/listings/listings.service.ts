@@ -21,5 +21,7 @@ export function toFeedItem(doc: FeedListing): FeedItem {
     url: doc.url,
     locationText: doc.locationText ?? null,
     effectiveDate: new Date(doc.effectiveDate).toISOString(),
+    // A row stored before tagging landed has no eligibility until the boot re-tag reaches it.
+    eligibility: doc.eligibility ?? 'unknown',
   };
 }

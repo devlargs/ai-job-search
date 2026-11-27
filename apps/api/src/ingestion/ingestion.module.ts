@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { MatchingModule } from '../matching/matching.module.js';
 import { SourcesModule } from '../sources/sources.module.js';
 import { IngestionScheduler } from './ingestion.scheduler.js';
 import { IngestionService } from './ingestion.service.js';
@@ -10,6 +11,7 @@ import { SourceRun, SourceRunSchema } from './source-run.schema.js';
 @Module({
   imports: [
     SourcesModule,
+    MatchingModule,
     MongooseModule.forFeature([
       { name: Listing.name, schema: ListingSchema },
       { name: SourceRun.name, schema: SourceRunSchema },

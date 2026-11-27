@@ -1,4 +1,4 @@
-import type { ListingDraft, SourceId } from '@ai-job-search/shared';
+import type { Eligibility, ListingDraft, SourceId } from '@ai-job-search/shared';
 
 /** Injection token for the array of registered sources. */
 export const JOB_SOURCES = Symbol('JOB_SOURCES');
@@ -9,8 +9,8 @@ export const JOB_SOURCES = Symbol('JOB_SOURCES');
  */
 export interface JobSource {
   readonly id: SourceId;
-  /** The board's known eligibility default. Unused until eligibility tagging lands. */
-  readonly eligibilityHint?: string;
+  /** The board's known eligibility default, used when a listing has no structured location (AD-4). */
+  readonly eligibilityHint?: Eligibility;
   /** Minimum minutes between runs of any outcome; the pipeline enforces it. */
   readonly minIntervalMin?: number;
   fetch(since: Date | null): Promise<ListingDraft[]>;

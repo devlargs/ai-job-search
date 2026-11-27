@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FeedItem, SourceId } from '@ai-job-search/shared';
 import { fetchFeed } from './api.js';
+import { EligibilityBadge } from './EligibilityBadge.js';
 
 type State =
   | { status: 'loading' }
@@ -49,6 +50,7 @@ export function App() {
               <div className="meta">
                 <span>{item.company}</span>
                 {item.locationText && <span>{item.locationText}</span>}
+                <EligibilityBadge eligibility={item.eligibility} />
                 <time dateTime={item.effectiveDate}>{dateFormat.format(new Date(item.effectiveDate))}</time>
                 <span className="source">via {SOURCE_LABEL[item.source]}</span>
               </div>

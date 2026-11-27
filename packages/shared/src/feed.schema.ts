@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Eligibility } from './eligibility.js';
 import { SourceId } from './source-id.js';
 
 export const FeedItem = z.object({
@@ -10,6 +11,7 @@ export const FeedItem = z.object({
   locationText: z.string().nullable(),
   /** ISO 8601 UTC string. */
   effectiveDate: z.iso.datetime(),
+  eligibility: Eligibility,
 });
 export type FeedItem = z.infer<typeof FeedItem>;
 
