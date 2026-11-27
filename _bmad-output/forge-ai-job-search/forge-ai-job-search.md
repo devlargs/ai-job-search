@@ -3,6 +3,7 @@
 Local web app for a jobless, zero-budget, Philippines-based dev to find **eligible remote** roles **early** and send a CV tailored to each one. Success = recruiter responses.
 
 ## Locked
+- **Core flow (user's words):** open the app → see roles matching a saved preference (e.g. Frontend) → read the job description → tailor CV with Claude → download → apply on the original posting.
 - **Core pain:** by the time a posting is seen, 100+ have applied. Optimize for being early, not for volume.
 - **Sources:** Remotive, RemoteOK, We Work Remotely, Himalayas, Jobicy, OnlineJobs.ph, Jobstreet, Kalibrr. Prefer public APIs/RSS over HTML scraping; verify each.
 - **Fetching:** background job every 30 min (default) → local MongoDB. Page reads Mongo; no live fetch on load.

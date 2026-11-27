@@ -25,8 +25,8 @@ A jobless Philippines-based developer applies early to remote roles they are eli
 - R4 (Locked: Ranking): the feed groups listings into freshness tiers (<24h, 1–3d, older) and orders each tier by match score against the user's CV skills.
 - R5 (Locked: Ranking): listings below a user-set minimum match score, default 40%, are hidden.
 - R6 (Locked: Ranking): when a listing's posted date is missing or unreliable, freshness uses the time the fetcher first saw it.
-- R7 (Discover intent, core flow): the user sets a role or skillset preference (e.g. Frontend, ReactJS) and the feed shows only listings matching it.
-- R8 (Discover intent, core flow): the user opens a listing to read its full job description and follow a link to the original posting to apply.
+- R7 (Locked: Core flow): the user sets a role or skillset preference (e.g. Frontend, ReactJS) and the feed shows only listings matching it.
+- R8 (Locked: Core flow): the user opens a listing to read its full job description and follow a link to the original posting to apply.
 - R9 (Locked: Resume): the user uploads a PDF CV once and gets a structured master resume (summary, skills, experience, projects) parsed by Claude.
 - R10 (Locked: Resume): the user reviews and corrects the master resume before it is used for matching or tailoring.
 - R11 (Locked: Resume): for a chosen listing, the user gets a resume tailored to its job description, built only from the master resume.
@@ -59,6 +59,9 @@ A jobless Philippines-based developer applies early to remote roles they are eli
 - Out: preserving the original CV's design.
 - Out: LLMs for fetching, eligibility or ranking; local embeddings (parked post-v1).
 - Out: auto-applying, multi-user use, hosting.
+- Touch point: Claude Code CLI — spawned headless for resume parse and tailoring; installed and signed in by the user; owner: Anthropic, consumed only.
+- Touch point: local MongoDB (Homebrew service) — data store; installed and run by the user; configured by epic-job-feed.
+- Touch point: the 8 job boards — public feeds read only; owner: third parties; consumed by epic-job-feed.
 - Tracer path: a listing is fetched in the background → tagged eligible → ranked against the master resume → opened in the feed → tailored → downloaded as a PDF.
 
 ## References
@@ -72,5 +75,6 @@ A jobless Philippines-based developer applies early to remote roles they are eli
 - Assumption: single user, local only, no login.
 - Assumption: applying happens on the original posting's site; the app links out and does not auto-apply.
 - Assumption: Claude Code CLI is installed and signed in on the user's machine.
-- Open question: which of the 8 sources expose usable feeds, and do any forbid automated access? The feed epic waits on it.
+- Open question: which of the 8 sources expose usable feeds, and do any forbid automated access? Epic 1 opens with a source spike that answers it (architecture, Deferred).
 - Decision (2026-11-27): the tech stack is settled by the architecture spine; fetching runs only while the app runs (AD-1); one active preference (AD-9); one tailored resume per job (AD-7).
+- Decision (2026-11-27): split into two epics, job feed then resume tailoring; the platform baseline (monorepo, packages/shared, MongoDB, scheduler) is epic 1's first stories.

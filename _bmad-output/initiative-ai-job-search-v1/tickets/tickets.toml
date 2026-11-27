@@ -1,0 +1,18 @@
+# Epics of initiative-ai-job-search-v1, in build order.
+
+[[epic]]
+id = 1
+slug = "epic-job-feed"
+title = "Eligible remote jobs arrive in a ranked feed"
+description = "On the user's machine the app scaffold runs, every verified board is fetched at boot and every 30 min into MongoDB, restricted listings never show, and the feed shows tiered listings (by date while no resume is confirmed) with full job descriptions and apply links, filtered by the user's preference. Owns the platform baseline (monorepo, packages/shared, Mongo, scheduler) and the matching module including matchScore; R4 here delivers tiers and the score slot, R13 in epic 2 feeds it resume skills. Also owns the feed's resumeStatus field and banner (shows 'none' until epic 2 lands). Hands epic 2: matching/data/skills.json, extractSkills, matchScore, and the resumeStatus contract."
+covers = ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"]
+risk = "high"
+
+[[epic]]
+id = 2
+slug = "epic-resume-tailoring"
+title = "A confirmed master resume ranks the feed and tailors a PDF per job"
+description = "The user uploads a PDF CV once, reviews and confirms the parsed master resume, sees the feed scored against its skills, and downloads a truth-checked tailored PDF for any listing. Owns the Claude gateway, master and tailored resumes, and the PDF template; supplies resumeSkillSet() to epic 1's matchScore and sets resumeStatus (R13); reuses epic 1's skills.json and extractSkills."
+covers = ["R9", "R10", "R11", "R12", "R13"]
+after = [{ epic = 1, needs = "the monorepo scaffold and packages/shared, stored listings with sanitized descriptions (AD-2, AD-3), the feed query's score slot, matchScore, extractSkills and matching/data/skills.json (AD-4, used by AD-6 skill mapping and AD-7 truth checks), and the resumeStatus banner" }]
+risk = "medium"
