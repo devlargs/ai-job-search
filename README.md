@@ -45,5 +45,5 @@ packages/shared/    zod contract (ListingDraft, FeedResponse, SourceId)
 
 ## API
 
-- `GET /api/feed` returns `{ items: FeedItem[] }`, newest `effectiveDate` first, with ISO 8601 UTC dates. It reads only stored listings and never waits on a fetch.
+- `GET /api/feed` returns `{ resumeStatus, tiers: { fresh, recent, older } }`. Tiers are by `effectiveDate` age (`fresh` ≤ 24h, `recent` > 24h to 72h, `older` > 72h), each ordered by score then newest first, with ISO 8601 UTC dates. Restricted listings are excluded, and each item carries its `eligibility`. It reads only stored listings and never waits on a fetch.
 - Errors use `{ error: { code, message } }`.

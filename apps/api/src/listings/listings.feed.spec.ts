@@ -27,20 +27,42 @@ function stored(id: string, effectiveDate: string, eligibility: StoredListing['e
   };
 }
 
-describe('feed read', () => {
-  it('queries listings newest effectiveDate first and returns ISO dates', async () => {
-    const docs = [stored('b', '2026-11-26T00:00:00.000Z'), stored('a', '2026-11-20T00:00:00.000Z')];
-    const sort = vi.fn();
-    const chain = { sort, lean: () => chain, exec: async () => docs };
-    sort.mockReturnValue(chain);
-    const model = { find: vi.fn(() => chain) } as unknown as Model<Listing>;
+const NOW = new Date('2026-11-27T12:00:00.000Z');
 
-    const feed = await new ListingsService(new ListingsReader(model)).getFeed();
+function serviceOver(docs: StoredListing[]) {
+  const sort = vi.fn();
+  const chain = { sort, lean: () => chain, exec: async () => docs };
+  sort.mockReturnValue(chain);
+  const find = vi.fn(() => chain);
+  const model = { find } as unknown as Model<Listing>;
+  return { service: new ListingsService(new ListingsReader(model)), find, sort };
+}
+
+const allItems = (feed: FeedResponse) => [...feed.tiers.fresh, ...feed.tiers.recent, ...feed.tiers.older];
+
+describe('feed read', () => {
+  it('groups listings into freshness tiers with resumeStatus none and ISO dates', async () => {
+    const { service, sort } = serviceOver([
+      stored('fresh', '2026-11-27T10:00:00.000Z'), // now − 2h
+      stored('recent', '2026-11-26T06:00:00.000Z'), // now − 30h
+      stored('older', '2026-11-22T12:00:00.000Z'), // now − 5d
+    ]);
+
+    const feed = await service.getFeed(NOW);
 
     expect(sort).toHaveBeenCalledWith({ effectiveDate: -1, _id: -1 });
     expect(FeedResponse.safeParse(feed).success).toBe(true);
-    expect(feed.items.map((i) => i.id)).toEqual(['b', 'a']);
-    expect(feed.items[0]!.effectiveDate).toBe('2026-11-26T00:00:00.000Z');
+    expect(feed.resumeStatus).toBe('none');
+    expect(feed.tiers.fresh.map((i) => i.id)).toEqual(['fresh']);
+    expect(feed.tiers.recent.map((i) => i.id)).toEqual(['recent']);
+    expect(feed.tiers.older.map((i) => i.id)).toEqual(['older']);
+    expect(feed.tiers.fresh[0]!.effectiveDate).toBe('2026-11-27T10:00:00.000Z');
+  });
+
+  it('returns three empty tiers for an empty database', async () => {
+    const feed = await serviceOver([]).service.getFeed(NOW);
+
+    expect(feed).toEqual({ resumeStatus: 'none', tiers: { fresh: [], recent: [], older: [] } });
   });
 
   it('excludes restricted listings in the query and carries each item\'s eligibility', async () => {
@@ -52,15 +74,13 @@ describe('feed read', () => {
       stored('e', '2026-11-22T00:00:00.000Z', 'unknown'),
       legacy,
     ];
-    const chain = { sort: () => chain, lean: () => chain, exec: async () => docs };
-    const find = vi.fn(() => chain);
-    const model = { find } as unknown as Model<Listing>;
+    const { service, find } = serviceOver(docs);
 
-    const feed = await new ListingsService(new ListingsReader(model)).getFeed();
+    const feed = await service.getFeed(NOW);
 
     expect(find).toHaveBeenCalledWith({ eligibility: { $ne: 'restricted' } }, expect.objectContaining({ descriptionHtml: 0 }));
     expect(FeedResponse.safeParse(feed).success).toBe(true);
-    expect(feed.items.map((i) => i.eligibility)).toEqual(['worldwide', 'apac', 'ph-friendly', 'unknown', 'unknown']);
+    expect(allItems(feed).map((i) => i.eligibility)).toEqual(['worldwide', 'apac', 'ph-friendly', 'unknown', 'unknown']);
   });
 
   it('turns a database error into a 500 error envelope', () => {

@@ -18,6 +18,32 @@ body {
   color: #c0362c;
 }
 
+.banner {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid #8fb3e0;
+  background: #e8f1fc;
+  color: #1d3f6e;
+}
+
+.tier {
+  margin-top: 1.5rem;
+}
+
+.tier-heading {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.tier-empty {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
 .feed {
   list-style: none;
   margin: 0;
@@ -61,6 +87,12 @@ body {
 }
 
 @media (prefers-color-scheme: dark) {
+  .banner {
+    border-color: #3d6aa3;
+    background: #14263d;
+    color: #c4dbf7;
+  }
+
   .badge-unknown {
     color: #ffd98a;
     background: #4a3300;
