@@ -1,4 +1,5 @@
-import { BadRequestException, Logger, type ArgumentsHost } from '@nestjs/common';
+import { BadRequestException, Logger, type ArgumentsHost, type PipeTransform } from '@nestjs/common';
+import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Model } from 'mongoose';
 import { ErrorEnvelopeFilter } from '../common/error-envelope.filter.js';
@@ -21,6 +22,27 @@ function fakeModel() {
     return chain;
   });
   return { model: { findById, updateOne } as unknown as Model<PreferenceDoc>, docs, updateOne };
+}
+
+type ParamMeta = { index: number; pipes: PipeTransform[]; schema?: unknown };
+
+/**
+ * PUT as Nest runs it: the body goes through the pipes and schema declared on
+ * the `@Body` of `put`, then the handler. Reads the decorator's own metadata,
+ * so the spec breaks if the wiring does.
+ */
+async function put(controller: PreferenceController, body: unknown) {
+  const args = Reflect.getMetadata(ROUTE_ARGS_METADATA, PreferenceController, 'put') as Record<string, ParamMeta>;
+  const params = Object.values(args);
+  expect(params).toHaveLength(1);
+  const { pipes, schema } = params[0]!;
+  expect(schema).toBeDefined();
+  expect(pipes.length).toBeGreaterThan(0);
+  let value = body;
+  for (const pipe of pipes) {
+    value = await pipe.transform(value, { type: 'body', data: undefined, metatype: Object, schema } as never);
+  }
+  return controller.put(value as never);
 }
 
 function setup() {
@@ -46,18 +68,18 @@ describe('preference endpoints', () => {
   it('saves and reloads the same values under the one fixed id', async () => {
     const { controller, updateOne, docs } = setup();
 
-    const saved = await controller.put({ roleKeywords: ['Frontend'], minMatch: 55 });
+    const saved = await put(controller, { roleKeywords: ['Frontend'], minMatch: 55 });
 
     expect(saved).toEqual({ roleKeywords: ['Frontend'], minMatch: 55 });
     expect(await controller.get()).toEqual({ roleKeywords: ['Frontend'], minMatch: 55 });
     expect(updateOne).toHaveBeenCalledWith({ _id: ACTIVE_PREFERENCE_ID }, expect.anything(), { upsert: true });
-    await controller.put({ roleKeywords: [], minMatch: 40 });
+    await put(controller, { roleKeywords: [], minMatch: 40 });
     expect([...docs.keys()]).toEqual([ACTIVE_PREFERENCE_ID]);
   });
 
   it('trims keywords and drops case-insensitive duplicates', async () => {
     const { controller } = setup();
-    expect(await controller.put({ roleKeywords: [' React ', 'react', 'Frontend', 'FRONTEND'], minMatch: 40 })).toEqual({
+    expect(await put(controller, { roleKeywords: [' React ', 'react', 'Frontend', 'FRONTEND'], minMatch: 40 })).toEqual({
       roleKeywords: ['React', 'Frontend'],
       minMatch: 40,
     });
@@ -74,10 +96,10 @@ describe('preference endpoints', () => {
     ['a missing body', undefined],
   ])('rejects %s with 400 and saves nothing', async (_label, body) => {
     const { controller, updateOne } = setup();
-    await controller.put({ roleKeywords: ['Frontend'], minMatch: 55 });
+    await put(controller, { roleKeywords: ['Frontend'], minMatch: 55 });
     updateOne.mockClear();
 
-    const err = await rejection(() => controller.put(body));
+    const err = await rejection(() => put(controller, body));
 
     expect(err).toBeInstanceOf(BadRequestException);
     expect(updateOne).not.toHaveBeenCalled();
@@ -89,6 +111,16 @@ describe('preference endpoints', () => {
     new ErrorEnvelopeFilter().catch(err, host);
     expect(status).toHaveBeenCalledWith(400);
     expect(json).toHaveBeenCalledWith({ error: { code: 'bad_request', message: expect.stringContaining('Invalid preference') } });
+  });
+
+  it.each([
+    ['minMatch above 100', { roleKeywords: [], minMatch: 150 }, /^Invalid preference: minMatch: \S/],
+    ['a blank keyword', { roleKeywords: ['   '], minMatch: 40 }, /^Invalid preference: roleKeywords\.0: \S/],
+    ['a missing body', undefined, /^Invalid preference: Invalid input: expected object, received undefined$/],
+  ])('names the first issue for %s as "Invalid preference: <path>: <message>"', async (_label, body, shape) => {
+    const err = await rejection(() => put(setup().controller, body));
+    expect(err).toBeInstanceOf(BadRequestException);
+    expect((err as BadRequestException).message).toMatch(shape);
   });
 
   it('warns and returns the defaults when the stored document is invalid', async () => {
@@ -107,13 +139,13 @@ describe('preference endpoints', () => {
     findById.mockImplementation(() => {
       throw new Error('read failed');
     });
-    expect(await controller.put({ roleKeywords: ['Frontend'], minMatch: 55 })).toEqual({ roleKeywords: ['Frontend'], minMatch: 55 });
+    expect(await put(controller, { roleKeywords: ['Frontend'], minMatch: 55 })).toEqual({ roleKeywords: ['Frontend'], minMatch: 55 });
   });
 
   it('accepts a 40-char keyword and 20 keywords', async () => {
     const { controller } = setup();
     const twenty = Array.from({ length: 20 }, (_, i) => `k${i}`);
-    expect((await controller.put({ roleKeywords: ['x'.repeat(40)], minMatch: 0 })).roleKeywords).toEqual(['x'.repeat(40)]);
-    expect((await controller.put({ roleKeywords: twenty, minMatch: 100 })).roleKeywords).toEqual(twenty);
+    expect((await put(controller, { roleKeywords: ['x'.repeat(40)], minMatch: 0 })).roleKeywords).toEqual(['x'.repeat(40)]);
+    expect((await put(controller, { roleKeywords: twenty, minMatch: 100 })).roleKeywords).toEqual(twenty);
   });
 });

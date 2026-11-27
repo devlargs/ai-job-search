@@ -29,7 +29,7 @@ export class ListingsService {
   async getFeed(now: Date = new Date()): Promise<FeedResponse> {
     const [docs, resumeSkills, pref] = await Promise.all([
       this.reader.findFeed(),
-      this.resume.resumeSkillSet(),
+      this.readResumeSkills(),
       this.readPreference(),
     ]);
     const items = docs
@@ -48,6 +48,16 @@ export class ListingsService {
     const doc = await this.reader.findDetail(id);
     if (!doc) throw new NotFoundException('Listing not found');
     return toListingDetail(doc);
+  }
+
+  /** The resume skill set; null (every score null) when it can't be read, so the feed stays 200. */
+  private async readResumeSkills(): Promise<ReadonlySet<string> | null> {
+    try {
+      return await this.resume.resumeSkillSet();
+    } catch (err) {
+      this.logger.warn(`Could not read the resume skill set, scoring with none: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
   }
 
   /** The active preference; the defaults when it can't be read, so the feed stays 200. */

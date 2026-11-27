@@ -64,7 +64,7 @@ export function ListingDetailView({ id }: { id: string }) {
   );
 }
 
-function ListingBody({ listing }: { listing: ListingDetail }) {
+export function ListingBody({ listing }: { listing: ListingDetail }) {
   const board = SOURCE_LABEL[listing.source];
   return (
     <article>

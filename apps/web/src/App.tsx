@@ -20,7 +20,7 @@ const TIERS: { key: keyof FeedResponse['tiers']; heading: string }[] = [
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
-function ListingRow({ item }: { item: FeedItem }) {
+export function ListingRow({ item }: { item: FeedItem }) {
   return (
     <li className="listing">
       <a className="title" href={`#/listings/${item.id}`}>
@@ -41,7 +41,7 @@ function ListingRow({ item }: { item: FeedItem }) {
 const LISTING_HASH = /^#\/listings\/([^/?#]+)/;
 
 /** The listing id in `#/listings/<id>`, or null for the feed. No router: the hash picks the view. */
-function listingIdFromHash(hash: string): string | null {
+export function listingIdFromHash(hash: string): string | null {
   const match = LISTING_HASH.exec(hash);
   if (!match) return null;
   try {

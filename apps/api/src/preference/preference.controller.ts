@@ -1,6 +1,19 @@
-import { BadRequestException, Body, Controller, Get, Put } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Put, StandardSchemaValidationPipe } from '@nestjs/common';
 import { Preference } from '@ai-job-search/shared';
 import { PreferenceService } from './preference.service.js';
+
+type Issue = { message: string; path?: ReadonlyArray<PropertyKey | { key: PropertyKey }> | undefined };
+
+/** The first issue as `Invalid preference: <path>: <message>`, the path left out when empty. */
+export function invalidPreference(issues: readonly Issue[]): BadRequestException {
+  const issue = issues[0];
+  const path = (issue?.path ?? []).map((seg) => String(typeof seg === 'object' && seg !== null ? seg.key : seg));
+  const where = path.length > 0 ? `${path.join('.')}: ` : '';
+  return new BadRequestException(`Invalid preference: ${where}${issue?.message ?? 'bad body'}`);
+}
+
+/** Validates the PUT body against the shared schema (AD-8) and returns the parsed, normalized value. */
+export const preferenceBodyPipe = new StandardSchemaValidationPipe({ exceptionFactory: invalidPreference });
 
 @Controller('preference')
 export class PreferenceController {
@@ -12,15 +25,9 @@ export class PreferenceController {
     return this.preference.get();
   }
 
-  /** PUT /api/preference: validates and replaces the preference. 400 and nothing saved on an invalid body. */
+  /** PUT /api/preference: validated by the pipe; 400 and nothing saved on an invalid body. */
   @Put()
-  put(@Body() body: unknown): Promise<Preference> {
-    const parsed = Preference.safeParse(body);
-    if (!parsed.success) {
-      const issue = parsed.error.issues[0];
-      const where = issue && issue.path.length > 0 ? `${issue.path.join('.')}: ` : '';
-      throw new BadRequestException(`Invalid preference: ${where}${issue?.message ?? 'bad body'}`);
-    }
-    return this.preference.set(parsed.data);
+  put(@Body({ schema: Preference, pipes: [preferenceBodyPipe] }) body: Preference): Promise<Preference> {
+    return this.preference.set(body);
   }
 }

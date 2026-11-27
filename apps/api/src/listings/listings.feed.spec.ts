@@ -205,6 +205,25 @@ describe('feed read', () => {
     warn.mockRestore();
   });
 
+  it('scores with null and warns when the resume skill set read fails', async () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const failing = { resumeSkillSet: vi.fn(async () => { throw new Error('resume store down'); }) } as unknown as ResumeSkills;
+    const docs = [
+      stored('a', '2026-11-27T10:00:00.000Z', 'worldwide', ['react', 'nestjs']),
+      stored('b', '2026-11-26T06:00:00.000Z', 'worldwide', []),
+    ];
+
+    const feed = await serviceOver(docs, failing).service.getFeed(NOW);
+
+    expect(FeedResponse.safeParse(feed).success).toBe(true);
+    expect(allItems(feed).map((i) => [i.id, i.score])).toEqual([
+      ['a', null],
+      ['b', null],
+    ]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('resume store down'));
+    warn.mockRestore();
+  });
+
   it('turns a database error into a 500 error envelope', () => {
     const json = vi.fn();
     const status = vi.fn(() => ({ json }));
