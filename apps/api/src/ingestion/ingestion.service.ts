@@ -1,4 +1,5 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { ListingDraft, type Eligibility } from '@ai-job-search/shared';
 import type { AnyBulkWriteOperation, Model } from 'mongoose';
@@ -18,6 +19,16 @@ export type SourceOutcome =
 export interface RunSummary {
   skipped: boolean;
   outcomes: SourceOutcome[];
+  /** Listings deleted at the end of the run for lastSeenAt older than RETENTION_DAYS. */
+  pruned?: number;
+}
+
+const DEFAULT_RETENTION_DAYS = 30;
+
+/** RETENTION_DAYS from config; anything not a positive finite number falls back to 30. */
+export function retentionDays(value: unknown): number {
+  const days = Number(value ?? DEFAULT_RETENTION_DAYS);
+  return Number.isFinite(days) && days > 0 ? days : DEFAULT_RETENTION_DAYS;
 }
 
 export interface RetagSummary {
@@ -45,6 +56,7 @@ export class IngestionService {
     @InjectModel(Listing.name) private readonly listings: Model<Listing>,
     @InjectModel(SourceRun.name) private readonly runs: Model<SourceRun>,
     @Inject(MatchingRules) private readonly rules: MatchingRules,
+    @Optional() @Inject(ConfigService) private readonly config?: ConfigService,
   ) {}
 
   async run(): Promise<RunSummary> {
@@ -63,8 +75,11 @@ export class IngestionService {
       for (const source of this.sources) {
         outcomes.push(await this.runSource(source));
       }
-      this.logger.log(`Fetch run finished in ${Date.now() - startedAt} ms: ${outcomes.map(describe).join('; ') || 'no sources'}`);
-      return { skipped: false, outcomes };
+      const pruned = await this.pruneStale();
+      this.logger.log(
+        `Fetch run finished in ${Date.now() - startedAt} ms: ${outcomes.map(describe).join('; ') || 'no sources'}; pruned ${pruned ?? 'failed'}`,
+      );
+      return { skipped: false, outcomes, pruned: pruned ?? 0 };
     } finally {
       this.running = false;
     }
@@ -73,10 +88,15 @@ export class IngestionService {
   private async runSource(source: JobSource): Promise<SourceOutcome> {
     const now = new Date();
     try {
-      // Throttle on the latest run of any outcome, so a failing or blocking source is not re-requested every tick.
+      // Throttle on the latest attempted run (ok or failed, not throttled), so a failing or blocking source is not re-requested every tick.
       if (source.minIntervalMin) {
-        const lastRun = await this.runs.findOne({ source: source.id }).sort({ startedAt: -1 }).lean().exec();
+        const lastRun = await this.runs
+          .findOne({ source: source.id, throttled: { $ne: true } })
+          .sort({ startedAt: -1 })
+          .lean()
+          .exec();
         if (lastRun && now.getTime() - lastRun.startedAt.getTime() < source.minIntervalMin * 60_000) {
+          await this.recordRun({ source: source.id, startedAt: now, finishedAt: new Date(), ok: false, count: 0, error: null, throttled: true });
           return { source: source.id, status: 'throttled' };
         }
       }
@@ -174,6 +194,21 @@ export class IngestionService {
       this.logger.log(`Eligibility tags current for rules ${hash.slice(0, 12)}`);
     }
     return { retagged, failed };
+  }
+
+  /** AD-3: delete listings not seen for RETENTION_DAYS. Returns the count, or null when the delete failed (logged, not fatal). */
+  private async pruneStale(): Promise<number | null> {
+    const days = retentionDays(this.config?.get('RETENTION_DAYS'));
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60_000);
+    try {
+      const result = await this.listings.deleteMany({ lastSeenAt: { $lt: cutoff } }).exec();
+      // Throttled records only mark a skipped tick; keep a day of them so source_runs stays bounded.
+      await this.runs.deleteMany({ throttled: true, startedAt: { $lt: new Date(Date.now() - 24 * 60 * 60_000) } }).exec();
+      return result.deletedCount ?? 0;
+    } catch (err) {
+      this.logger.error(`Pruning listings older than ${days} days failed: ${errorText(err)}`);
+      return null;
+    }
   }
 
   private async recordRun(run: SourceRun): Promise<void> {

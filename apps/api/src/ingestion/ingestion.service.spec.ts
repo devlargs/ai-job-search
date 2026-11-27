@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Logger } from '@nestjs/common';
 import type { Eligibility, ListingDraft, SourceId } from '@ai-job-search/shared';
 import type { Model } from 'mongoose';
 import { MatchingRules } from '../matching/matching.module.js';
@@ -14,7 +15,7 @@ const rules = new MatchingRules(loaded.eligibility, loaded.hash);
 type StoredRow = Partial<Listing> & { _id: string };
 
 /** In-memory stand-ins for the two Mongoose models, covering only what the service calls. */
-function fakeModels(existingRuns: SourceRun[] = [], storedListings: StoredRow[] = []) {
+function fakeModels(existingRuns: SourceRun[] = [], storedListings: StoredRow[] = [], deleteResult: { deletedCount: number } | Error = { deletedCount: 0 }) {
   const runs: SourceRun[] = [...existingRuns];
   const bulkWrite = vi.fn(async (_ops: unknown[]) => ({}));
   const find = vi.fn((filter: { rulesHash: { $ne: string } }) => {
@@ -28,11 +29,22 @@ function fakeModels(existingRuns: SourceRun[] = [], storedListings: StoredRow[] 
     };
     return chain;
   });
-  const listings = { bulkWrite, find } as unknown as Model<Listing>;
+  const deleteMany = vi.fn((_filter: { lastSeenAt: { $lt: Date } }) => ({
+    exec: async () => {
+      if (deleteResult instanceof Error) throw deleteResult;
+      return deleteResult;
+    },
+  }));
+  const listings = { bulkWrite, find, deleteMany } as unknown as Model<Listing>;
   const runModel = {
-    findOne: (filter: { source: string; ok?: boolean }) => {
+    findOne: (filter: { source: string; ok?: boolean; throttled?: { $ne: boolean } }) => {
       const matching = runs
-        .filter((r) => r.source === filter.source && (filter.ok === undefined || r.ok === filter.ok))
+        .filter(
+          (r) =>
+            r.source === filter.source &&
+            (filter.ok === undefined || r.ok === filter.ok) &&
+            (filter.throttled === undefined || r.throttled !== true),
+        )
         .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
       const chain = {
         sort: () => chain,
@@ -41,12 +53,20 @@ function fakeModels(existingRuns: SourceRun[] = [], storedListings: StoredRow[] 
       };
       return chain;
     },
+    deleteMany: vi.fn((filter: { throttled: boolean; startedAt: { $lt: Date } }) => ({
+      exec: async () => {
+        const keep = runs.filter((r) => !(r.throttled === filter.throttled && r.startedAt < filter.startedAt.$lt));
+        const deletedCount = runs.length - keep.length;
+        runs.splice(0, runs.length, ...keep);
+        return { deletedCount };
+      },
+    })),
     create: vi.fn(async (doc: SourceRun) => {
       runs.push(doc);
       return doc;
     }),
   } as unknown as Model<SourceRun>;
-  return { listings, runModel, runs, bulkWrite, find };
+  return { listings, runModel, runs, bulkWrite, find, deleteMany };
 }
 
 function draft(overrides: Partial<ListingDraft> = {}): ListingDraft {
@@ -80,6 +100,13 @@ function upsertCall(bulkWrite: ReturnType<typeof fakeModels>['bulkWrite'], index
 }
 
 describe('IngestionService', () => {
+  const logSpy = vi.spyOn(Logger.prototype, 'log');
+  const errorSpy = vi.spyOn(Logger.prototype, 'error');
+  beforeEach(() => {
+    logSpy.mockClear();
+    errorSpy.mockClear();
+  });
+
   it('records a failing source as ok:false while other sources continue', async () => {
     const m = fakeModels();
     const broken = fakeSource('broken', async () => {
@@ -116,10 +143,11 @@ describe('IngestionService', () => {
     expect(summary.outcomes).toEqual([{ source: 'remotive', status: 'throttled' }]);
     expect(source.fetch).not.toHaveBeenCalled();
     expect(m.bulkWrite).not.toHaveBeenCalled();
-    expect(m.runs).toHaveLength(1);
+    expect(m.runs).toHaveLength(2);
+    expect(m.runs[1]).toMatchObject({ source: 'remotive', ok: false, throttled: true, count: 0, error: null });
   });
 
-  it('also throttles after a recent failed run, without fetching or recording a run', async () => {
+  it('also throttles after a recent failed run, without fetching', async () => {
     const failed: SourceRun = {
       source: 'remotive',
       startedAt: new Date(Date.now() - 30 * 60_000),
@@ -136,7 +164,114 @@ describe('IngestionService', () => {
 
     expect(summary.outcomes).toEqual([{ source: 'remotive', status: 'throttled' }]);
     expect(source.fetch).not.toHaveBeenCalled();
-    expect(m.runs).toHaveLength(1);
+    expect(m.runs).toHaveLength(2);
+    expect(m.runs[1]).toMatchObject({ throttled: true });
+  });
+
+  it('does not let throttled records extend the throttle window', async () => {
+    const old: SourceRun = {
+      source: 'remotive',
+      startedAt: new Date(Date.now() - 400 * 60_000),
+      finishedAt: new Date(),
+      ok: true,
+      count: 3,
+      error: null,
+    };
+    const throttled: SourceRun = { ...old, startedAt: new Date(Date.now() - 10 * 60_000), ok: false, count: 0, throttled: true };
+    const m = fakeModels([old, throttled]);
+    const source = fakeSource('remotive', async () => [draft()], 360);
+    const service = new IngestionService([source], m.listings, m.runModel, rules);
+
+    const summary = await service.run();
+
+    expect(summary.outcomes[0]).toMatchObject({ status: 'ok', count: 1 });
+    expect(source.fetch).toHaveBeenCalledWith(old.startedAt);
+  });
+
+  it('writes one source_runs record per source per run, isolating a throwing adapter', async () => {
+    const m = fakeModels();
+    const broken = fakeSource('broken', async () => {
+      throw new Error('boom');
+    });
+    const good = fakeSource('remotive', async () => [draft()]);
+    const service = new IngestionService([broken, good], m.listings, m.runModel, rules);
+
+    await service.run();
+    await service.run();
+
+    expect(m.runs.map((r) => `${r.source}:${r.ok}`)).toEqual(['broken:false', 'remotive:true', 'broken:false', 'remotive:true']);
+    expect(upsertCall(m.bulkWrite, 1)).toHaveLength(1);
+  });
+
+  it('prunes listings whose lastSeenAt is older than RETENTION_DAYS at the end of a run', async () => {
+    const m = fakeModels([], [], { deletedCount: 2 });
+    const config = { get: (key: string) => (key === 'RETENTION_DAYS' ? '10' : undefined) };
+    const service = new IngestionService([], m.listings, m.runModel, rules, config as never);
+
+    const before = Date.now();
+    const summary = await service.run();
+
+    expect(summary.pruned).toBe(2);
+    const cutoff = m.deleteMany.mock.calls[0]![0].lastSeenAt.$lt.getTime();
+    expect(before - cutoff).toBeGreaterThan(10 * 864e5 - 1000);
+    expect(before - cutoff).toBeLessThanOrEqual(10 * 864e5);
+  });
+
+  it('defaults RETENTION_DAYS to 30 when unset or invalid', async () => {
+    for (const value of [undefined, '0', 'abc', '-3']) {
+      const m = fakeModels();
+      const config = { get: () => value };
+      const service = new IngestionService([], m.listings, m.runModel, rules, config as never);
+      const before = Date.now();
+      await service.run();
+      const cutoff = m.deleteMany.mock.calls[0]![0].lastSeenAt.$lt.getTime();
+      expect(Math.round((before - cutoff) / 864e5)).toBe(30);
+    }
+  });
+
+  it('reports a failed prune as 0 and logs it, without failing the run', async () => {
+    const m = fakeModels([], [], new Error('mongo down'));
+    const good = fakeSource('remotive', async () => [draft()]);
+    const service = new IngestionService([good], m.listings, m.runModel, rules);
+
+    const summary = await service.run();
+
+    expect(summary.outcomes[0]).toMatchObject({ status: 'ok' });
+    expect(summary.pruned).toBe(0);
+    expect(errorSpy.mock.calls.some(([msg]) => String(msg).includes('Pruning listings older than 30 days failed'))).toBe(true);
+    expect(logSpy.mock.calls.some(([msg]) => String(msg).includes('pruned failed'))).toBe(true);
+  });
+
+  it("logs one summary line with the failing source's error and the pruned count", async () => {
+    const m = fakeModels([], [], { deletedCount: 3 });
+    const broken = fakeSource('broken', async () => {
+      throw new Error('boom');
+    });
+    const good = fakeSource('remotive', async () => [draft()]);
+    const service = new IngestionService([broken, good], m.listings, m.runModel, rules);
+
+    await service.run();
+
+    const summaries = logSpy.mock.calls.map(([msg]) => String(msg)).filter((msg) => msg.startsWith('Fetch run finished'));
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]).toContain('broken failed (Error: boom)');
+    expect(summaries[0]).toContain('remotive ok, 1 upserted');
+    expect(summaries[0]).toContain('pruned 3');
+  });
+
+  it('deletes throttled source_runs records older than a day and keeps attempted runs', async () => {
+    const day = 864e5;
+    const base = { source: 'remotive', finishedAt: new Date(), count: 0, error: null };
+    const m = fakeModels([
+      { ...base, startedAt: new Date(Date.now() - 2 * day), ok: true },
+      { ...base, startedAt: new Date(Date.now() - 2 * day), ok: false, throttled: true },
+      { ...base, startedAt: new Date(Date.now() - 60_000), ok: false, throttled: true },
+    ]);
+    const service = new IngestionService([], m.listings, m.runModel, rules);
+
+    await service.run();
+
+    expect(m.runs.map((r) => `${r.ok}:${r.throttled ?? false}`)).toEqual(['true:false', 'false:true']);
   });
 
   it('fetches again once the throttle window has passed, passing lastSuccessAt as since', async () => {

@@ -21,6 +21,10 @@ export class SourceRun {
 
   @Prop({ type: String, default: null })
   error!: string | null;
+
+  /** True when the source was skipped by its minIntervalMin throttle; such records never extend the throttle window. */
+  @Prop({ type: Boolean, default: false })
+  throttled?: boolean;
 }
 
 export type SourceRunDocument = HydratedDocument<SourceRun>;
