@@ -1,5 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
-import type { FeedResponse } from '@ai-job-search/shared';
+import { Controller, Get, Param } from '@nestjs/common';
+import type { FeedResponse, ListingDetail } from '@ai-job-search/shared';
 import { ListingsService } from './listings.service.js';
 
 @Controller()
@@ -10,5 +10,11 @@ export class ListingsController {
   @Get('feed')
   getFeed(): Promise<FeedResponse> {
     return this.listings.getFeed();
+  }
+
+  /** GET /api/listings/:id: one non-restricted listing with its sanitized description; 404 otherwise. */
+  @Get('listings/:id')
+  getDetail(@Param('id') id: string): Promise<ListingDetail> {
+    return this.listings.getDetail(id);
   }
 }

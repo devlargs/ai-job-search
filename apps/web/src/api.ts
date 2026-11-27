@@ -1,4 +1,19 @@
-import { FeedResponse, Preference } from '@ai-job-search/shared';
+import { FeedResponse, ListingDetail, Preference } from '@ai-job-search/shared';
+
+/** A failed API call, carrying the HTTP status so a view can tell "not found" apart. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+
+  get notFound(): boolean {
+    return this.status === 404;
+  }
+}
 
 /** Reads a JSON body and throws with the error envelope's message on a non-2xx status. */
 async function readJson(res: Response): Promise<unknown> {
@@ -6,7 +21,7 @@ async function readJson(res: Response): Promise<unknown> {
   if (!res.ok) {
     const message =
       (body as { error?: { message?: string } } | null)?.error?.message ?? `Request failed (${res.status})`;
-    throw new Error(message);
+    throw new ApiError(message, res.status);
   }
   return body;
 }
@@ -28,4 +43,9 @@ export async function savePreference(p: Preference): Promise<Preference> {
     body: JSON.stringify(p),
   });
   return Preference.parse(await readJson(res));
+}
+
+export async function fetchListing(id: string, signal?: AbortSignal): Promise<ListingDetail> {
+  const res = await fetch(`/api/listings/${encodeURIComponent(id)}`, { signal, headers: { Accept: 'application/json' } });
+  return ListingDetail.parse(await readJson(res));
 }

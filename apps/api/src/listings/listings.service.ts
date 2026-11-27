@@ -1,6 +1,7 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { DEFAULT_PREFERENCE, SourceId, type FeedItem, type FeedResponse, type Preference } from '@ai-job-search/shared';
-import { ListingsReader, type FeedListing } from '../ingestion/listings-reader.js';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { DEFAULT_PREFERENCE, SourceId, type FeedItem, type FeedResponse, type ListingDetail, type Preference } from '@ai-job-search/shared';
+import { ListingsReader, type DetailListing, type FeedListing } from '../ingestion/listings-reader.js';
+import { sanitizeHtml } from '../ingestion/sanitize-html.js';
 import { matchScore } from '../matching/match-score.js';
 import { MatchingRules } from '../matching/matching.module.js';
 import { passesPreference } from '../matching/preference-match.js';
@@ -38,6 +39,17 @@ export class ListingsService {
     return { resumeStatus: 'none', tiers: groupIntoTiers(items, now) };
   }
 
+  /**
+   * One listing in full (R8). Malformed, unknown and restricted ids are all 404.
+   * The stored HTML is sanitized again on read: idempotent, and it guards
+   * against rows edited outside ingestion.
+   */
+  async getDetail(id: string): Promise<ListingDetail> {
+    const doc = await this.reader.findDetail(id);
+    if (!doc) throw new NotFoundException('Listing not found');
+    return toListingDetail(doc);
+  }
+
   /** The active preference; the defaults when it can't be read, so the feed stays 200. */
   private async readPreference(): Promise<Preference> {
     try {
@@ -61,5 +73,21 @@ export function toFeedItem(doc: FeedListing, score: number | null): FeedItem {
     // A row stored before tagging landed has no eligibility until the boot re-derive reaches it.
     eligibility: doc.eligibility ?? 'unknown',
     score,
+  };
+}
+
+export function toListingDetail(doc: DetailListing): ListingDetail {
+  return {
+    id: doc._id.toString(),
+    source: SourceId.parse(doc.source),
+    title: doc.title,
+    company: doc.company,
+    url: doc.url,
+    locationText: doc.locationText ?? null,
+    effectiveDate: new Date(doc.effectiveDate).toISOString(),
+    eligibility: doc.eligibility ?? 'unknown',
+    descriptionHtml: sanitizeHtml(doc.descriptionHtml ?? ''),
+    postedAt: doc.postedAt ? new Date(doc.postedAt).toISOString() : null,
+    firstSeenAt: new Date(doc.firstSeenAt).toISOString(),
   };
 }

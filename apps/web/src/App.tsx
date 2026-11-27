@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
-import type { FeedItem, FeedResponse, SourceId } from '@ai-job-search/shared';
+import type { FeedItem, FeedResponse } from '@ai-job-search/shared';
 import { fetchFeed } from './api.js';
 import { EligibilityBadge } from './EligibilityBadge.js';
+import { ListingDetailView } from './ListingDetailView.js';
 import { PreferenceForm } from './PreferenceForm.js';
 import { ResumeStatusBanner } from './ResumeStatusBanner.js';
+import { SOURCE_LABEL } from './sources.js';
 
 type State =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'ready'; feed: FeedResponse };
-
-const SOURCE_LABEL: Record<SourceId, string> = {
-  remotive: 'Remotive',
-};
 
 const TIERS: { key: keyof FeedResponse['tiers']; heading: string }[] = [
   { key: 'fresh', heading: 'Last 24 hours' },
@@ -25,7 +23,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 function ListingRow({ item }: { item: FeedItem }) {
   return (
     <li className="listing">
-      <a className="title" href={item.url} target="_blank" rel="noopener noreferrer">
+      <a className="title" href={`#/listings/${item.id}`}>
         {item.title}
       </a>
       <div className="meta">
@@ -39,7 +37,39 @@ function ListingRow({ item }: { item: FeedItem }) {
   );
 }
 
+/** `#/listings/<id>`; a trailing slash or query after the id is ignored. */
+const LISTING_HASH = /^#\/listings\/([^/?#]+)/;
+
+/** The listing id in `#/listings/<id>`, or null for the feed. No router: the hash picks the view. */
+function listingIdFromHash(hash: string): string | null {
+  const match = LISTING_HASH.exec(hash);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]!);
+  } catch {
+    return match[1]!;
+  }
+}
+
 export function App() {
+  const [listingId, setListingId] = useState(() => listingIdFromHash(location.hash));
+
+  useEffect(() => {
+    const onHashChange = () => {
+      setListingId(listingIdFromHash(location.hash));
+      window.scrollTo(0, 0);
+      // Move focus to the new view's heading, as a page navigation would.
+      requestAnimationFrame(() => document.querySelector<HTMLElement>('main h1')?.focus());
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  if (listingId !== null) return <ListingDetailView id={listingId} />;
+  return <Feed />;
+}
+
+function Feed() {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [reload, setReload] = useState(0);
 
@@ -60,7 +90,7 @@ export function App() {
 
   return (
     <main className="page">
-      <h1>Job feed</h1>
+      <h1 tabIndex={-1}>Job feed</h1>
       <PreferenceForm onSaved={() => setReload((n) => n + 1)} />
       {state.status === 'loading' && <p className="status">Loading listings…</p>}
       {state.status === 'error' && (
