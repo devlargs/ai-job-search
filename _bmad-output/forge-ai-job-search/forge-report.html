@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forge Report — AI Job Search</title>
+<style>
+  :root { --ink:#2a2118; --paper:#f6f0e4; --rule:#d8ccb4; --wax:#8c1c13; --muted:#6b5d4b; --ok:#2f5d3a; --warn:#8a5a12; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#e9e1d0; color:var(--ink); font:16px/1.55 Georgia, "Times New Roman", serif; }
+  .sheet { max-width:860px; margin:40px auto; background:var(--paper); padding:56px 64px; border:1px solid var(--rule); box-shadow:0 2px 0 var(--rule), 0 18px 40px rgba(60,40,20,.12); position:relative; }
+  header { display:flex; gap:32px; align-items:center; border-bottom:2px solid var(--ink); padding-bottom:24px; margin-bottom:28px; }
+  header .t { flex:1; }
+  .kicker { font:600 12px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  h1 { font-size:34px; line-height:1.15; margin:8px 0 10px; }
+  .lede { color:var(--muted); margin:0; }
+  h2 { font:700 13px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing:.16em; text-transform:uppercase; margin:34px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--rule); }
+  ul { margin:0; padding-left:20px; }
+  li { margin:6px 0; }
+  li b { font-weight:700; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+  .rej li::marker { content:"✕  "; color:var(--wax); }
+  .risk li::marker { content:"△  "; color:var(--warn); }
+  .park li::marker { content:"◇  "; color:var(--muted); }
+  .cast { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+  .p { border:1px solid var(--rule); padding:12px 14px; background:#fbf7ee; }
+  .p .n { font-weight:700; }
+  .p .r { font:12px/1.3 ui-sans-serif, system-ui, sans-serif; color:var(--muted); margin:2px 0 6px; }
+  .p q { font-style:italic; font-size:14px; }
+  .tag { display:inline-block; font:600 10px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing:.1em; text-transform:uppercase; padding:3px 6px; border:1px solid var(--rule); color:var(--muted); margin-left:6px; vertical-align:middle; }
+  footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--rule); font:12px/1.4 ui-sans-serif, system-ui, sans-serif; color:var(--muted); display:flex; justify-content:space-between; }
+  @media (max-width:700px){ .sheet{padding:32px 24px; margin:0;} header{flex-direction:column-reverse; align-items:flex-start;} .two{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header>
+    <div class="t">
+      <div class="kicker">BMad Forge · Outcome Report · 27 Nov 2026</div>
+      <h1>AI Job Search</h1>
+      <p class="lede">A local web app for a jobless, zero-budget, Philippines-based developer to find <b>eligible remote</b> roles <b>early</b> and send a CV tailored to each one. The measure of success is responses from recruiters.</p>
+    </div>
+    <svg width="168" height="168" viewBox="0 0 200 200" role="img" aria-label="Wax seal: Hardened">
+      <defs>
+        <radialGradient id="w" cx="40%" cy="35%" r="70%">
+          <stop offset="0" stop-color="#c0392b"/><stop offset=".6" stop-color="#8c1c13"/><stop offset="1" stop-color="#5a0f0a"/>
+        </radialGradient>
+        <path id="arc" d="M100,100 m-62,0 a62,62 0 1,1 124,0 a62,62 0 1,1 -124,0"/>
+      </defs>
+      <path fill="url(#w)" d="M100 8c14 0 18 10 30 13s24-2 32 9 2 22 8 33 18 16 18 30-12 19-14 31 6 23-3 33-21 5-32 11-15 18-39 18-26-12-38-16-24 0-31-11-1-22-6-33S8 114 8 100s12-19 14-31-6-23 3-33 21-5 32-11S86 8 100 8z"/>
+      <circle cx="100" cy="100" r="74" fill="none" stroke="#f3d9c9" stroke-opacity=".45" stroke-width="2"/>
+      <circle cx="100" cy="100" r="50" fill="none" stroke="#f3d9c9" stroke-opacity=".45" stroke-width="1.5"/>
+      <text font-family="Georgia,serif" font-size="12" letter-spacing="3" fill="#f6e3d6" fill-opacity=".85"><textPath href="#arc" startOffset="0">BMAD FORGE · TESTED IN FIRE · BMAD FORGE · TESTED IN FIRE ·</textPath></text>
+      <text x="100" y="96" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="20" letter-spacing="2" fill="#fbeee6">HARDENED</text>
+      <text x="100" y="118" text-anchor="middle" font-family="Georgia,serif" font-size="11" letter-spacing="2" fill="#f3d9c9" fill-opacity=".8">MMXXVI</text>
+    </svg>
+  </header>
+
+  <h2>Locked decisions</h2>
+  <ul>
+    <li><b>Core pain is being late, not having too few options.</b> By the time a posting is seen, 100+ people have applied. The app optimizes for being early.</li>
+    <li><b>Sources:</b> Remotive, RemoteOK, We Work Remotely, Himalayas, Jobicy, OnlineJobs.ph, Jobstreet, Kalibrr. Public APIs and RSS feeds come before HTML scraping, and each source still needs checking.</li>
+    <li><b>A background fetcher</b> runs every 30 minutes into local MongoDB. The page reads from Mongo and never fetches live.</li>
+    <li><b>Eligibility comes first.</b> Keyword rules decide whether a Philippines-based applicant can take the job. Only eligible roles are shown. Unknowns are shown with a badge, and restricted roles are hidden.</li>
+    <li><b>Ranking:</b> freshness tiers (&lt;24h, 1–3d, older), sorted by CV skill match within each tier. The minimum match is a setting, 40% by default.</li>
+    <li><b>Resume:</b> upload your PDF once. Claude turns it into a master resume and you review it. Claude tailors it for each job, and the app renders a PDF in its own ATS-friendly template.</li>
+    <li><b>Tailoring never invents anything.</b> It only reorders and rewords true facts.</li>
+    <li><b>Claude runs through <code>claude -p</code> on your subscription</b> and is used for resume work only.</li>
+  </ul>
+
+  <div class="two">
+    <section>
+      <h2>Rejected, and why</h2>
+      <ul class="rej">
+        <li><b>LinkedIn and Indeed as the main source.</b> It's the same feed the crowd sees, it breaks easily, and scraping it breaks their terms of service.</li>
+        <li><b>Claude for scraping, eligibility or ranking.</b> Claude is reserved for resume work.</li>
+        <li><b>A blended match×age score.</b> Tiers make it clearer why a job ranked where it did.</li>
+        <li><b>Keeping the original CV design.</b> Getting responses matters more than design.</li>
+        <li><b>Notifications in v1.</b> Deferred by your choice.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Weak points that survived</h2>
+      <ul class="risk">
+        <li><b>Build time competes with time spent applying.</b> Time-box v1 to about two weeks and keep applying by hand in parallel.</li>
+        <li>Subscription usage limits cap how many CVs you can tailor.</li>
+        <li>Rules-only eligibility means a large "unknown" bucket.</li>
+        <li>Without alerts, being early depends on opening the app often.</li>
+      </ul>
+    </section>
+  </div>
+
+  <h2>Parked for after v1</h2>
+  <ul class="park">
+    <li>Application tracking (statuses, which CV version was sent) and response-rate stats by source, match band and how fast you applied.</li>
+    <li>Telegram alerts for high-match jobs posted in the last 24h.</li>
+    <li>Local embeddings if dictionary matching turns out to be too blunt.</li>
+  </ul>
+
+  <h2>Who pressure-tested it</h2>
+  <div class="cast">
+    <div class="p"><div class="n">📋 John <span class="tag">BMad PM</span></div><div class="r">Jobs-to-be-done interrogator</div><q>Options are a means. The job is get hired.</q></div>
+    <div class="p"><div class="n">🏗️ Winston <span class="tag">BMad Architect</span></div><div class="r">Boring-tech pragmatist</div><q>If speed is the goal, you have to get the listing before it reaches the aggregators.</q></div>
+    <div class="p"><div class="n">📊 Mary <span class="tag">BMad Analyst</span></div><div class="r">Evidence hunter</div><q>The employer's payroll decides who's eligible, not the candidate.</q></div>
+    <div class="p"><div class="n">🎨 Sally <span class="tag">BMad UX</span></div><div class="r">Scene painter</div><q>A PDF that looks like it went through a blender.</q></div>
+    <div class="p"><div class="n">💻 Amelia <span class="tag">BMad Dev</span></div><div class="r">Deterministic-first engineer</div><q>Dictionary matching is deterministic, testable, and runs in milliseconds.</q></div>
+    <div class="p"><div class="n">🧑‍💼 Dana Reyes <span class="tag">Guest</span></div><div class="r">Tech recruiter, ~10k CVs screened</div><q>Volume doesn't get you hired. Being fresh and matching does.</q></div>
+    <div class="p"><div class="n">🌏 Paolo Cruz <span class="tag">Guest</span></div><div class="r">Manila senior dev, remote for US startups</div><q>If you skip those, you're skipping the market that's already looking for you.</q></div>
+    <div class="p"><div class="n">🛡️ Rita Okafor <span class="tag">Guest</span></div><div class="r">Hiring manager, remote-first SaaS</div><q>Tailoring should reorder and reword what's true, never add skills you don't have.</q></div>
+  </div>
+
+  <footer><span>Session goal: improve · Outcome: hardened</span><span>forge-ai-job-search</span></footer>
+</main>
+</body>
+</html>
