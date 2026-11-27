@@ -59,8 +59,10 @@ The user opens one local page and sees only remote roles they are eligible for, 
 
 ## Notes
 
-- Open question: which of the 8 boards are usable, and how (API, RSS or HTML)? Story 2 (source spike) answers it.
+- Resolved (2026-11-27): which of the 8 boards are usable, and how — answered by the source spike (story 2), see spike-source-boards/spike-source-boards.md.
 - Decision (2026-11-27): refined from the initiative's lines and the architecture spine alone; eligibility phrases, skill synonyms and feed layout are left to the stories; no UX run.
-- Decision (2026-11-27): the tracer bullet is story 1: the scaffold plus a Remotive-only path from fetch to the feed page. The source spike follows as the least certain part. HTML-scraped adapters are the last story so they are cut first.
+- Decision (2026-11-27): the tracer bullet is story 1: the scaffold plus a Remotive-only path from fetch to the feed page. The source spike follows as the least certain part. HTML-scraped adapters are the last story so they are cut first (superseded 2026-11-27: the spike adopted no HTML board; see the Dropped line for entry 10).
 - Decision (2026-11-27): Remotive's terms and fields are verified inside story 1, so the spike covers only the other 7 boards.
 - Decision (2026-11-27): stories 3, 5, 6, 7 and 8 form one lane, because they all change the feed query, the listings module and the feed item. Stories 3, 4 and 6 share the ingestion pipeline. Story 6 ships a null resumeSkillSet() stub that epic 2 replaces.
+- Decision (2026-11-27): the source spike (entry 2, spike-source-boards.md, signed off by the user) adopted remoteok, we-work-remotely, himalayas and jobicy, all API or RSS, and dropped onlinejobs-ph (ToS forbids automated access), jobstreet (bot-blocked, no public API) and kalibrr (undocumented internal API). R1's "each source is verified usable before it is relied on" excludes the three dropped boards, so what is required is unchanged; only delivery changes. Entry 9 now names the four adopted boards and its unknown is settled; entry 11 no longer waits on entry 10. Entry 9 also waits on entry 8, because it extends the SourceId enum and the per-board credit in the feed item and detail view the feed lane (3, 5, 7, 8) edits; it owns the eligibility rules for its boards' location formats, and its verify checks stored listings, not the filtered feed, since most RemoteOK and Jobicy items are restricted.
+- Dropped: entry 10 (HTML boards) — the spike adopted no board as HTML only, so it has nothing to build (2026-11-27).
