@@ -65,8 +65,9 @@ function toDraft(item: unknown): ListingDraft | null {
   const sourceJobId = str(item.guid) || link;
   if (!sourceJobId || !link) return null;
   const { company, title } = splitWwrTitle(str(item.title));
+  // <region> is the hiring constraint; <country>/<state> describe the company's location
+  // (live items pair "Anywhere in the World" with a US country), so neither feeds eligibility.
   const region = str(item.region);
-  const country = str(item.country);
   return {
     sourceJobId,
     url: link,
@@ -74,7 +75,7 @@ function toDraft(item: unknown): ListingDraft | null {
     company,
     descriptionHtml: typeof item.description === 'string' ? item.description : '',
     locationText: region === '' ? null : region,
-    locationTags: country === '' ? [] : [country],
+    locationTags: [],
     postedAt: parseDate(item.pubDate),
   };
 }

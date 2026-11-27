@@ -45,15 +45,16 @@ describe('WeWorkRemotelyAdapter', () => {
     expect(first.title).toBe('Senior Frontend Engineer (React)');
     expect(first.descriptionHtml.startsWith('<p><strong>About the role</strong></p>')).toBe(true);
     expect(first.locationText).toBe('Anywhere in the World');
-    expect(first.locationTags).toEqual([]); // the state is ignored, the country is empty
+    expect(first.locationTags).toEqual([]); // state and country are ignored
     expect(first.postedAt?.toISOString()).toBe('2026-11-27T12:35:30.000Z');
     expect(drafts.map((d) => d.locationText)).toEqual(['Anywhere in the World', 'Asia Only', 'USA Only', 'USA Only']);
   });
 
-  it('puts a non-empty country into locationTags', async () => {
-    const xml = oneItem('Acme: Dev').replace('<country></country>', '<country>Philippines</country>');
+  it('ignores <country> for eligibility: "Anywhere in the World" with a US company stays worldwide input', async () => {
+    const xml = oneItem('Acme: Dev').replace('<country></country>', '<country>🇺🇸 United States of America</country>');
     const [draft] = await adapterWith(xml).adapter.fetch(null);
-    expect(draft!.locationTags).toEqual(['Philippines']);
+    expect(draft!.locationText).toBe('Anywhere in the World');
+    expect(draft!.locationTags).toEqual([]);
   });
 
   it('keeps a title without ": " whole, with an empty company', async () => {

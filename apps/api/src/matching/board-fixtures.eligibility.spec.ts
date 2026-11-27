@@ -74,6 +74,10 @@ describe('board fixtures through tagEligibility', () => {
     expect(await tagsFor(boards[3]![1])).toEqual(['restricted', 'restricted', 'apac', 'ph-friendly']);
   });
 
+  it('keeps an Australian state with "Wales" in it as apac, not restricted', () => {
+    expect(tagEligibility({ locationText: 'Sydney, New South Wales', locationTags: [], text: '' }, rules)).toBe('apac');
+  });
+
   it('tags single European and Latin American country lists as restricted', () => {
     for (const country of ['Albania', 'Croatia', 'Norway', 'Honduras', 'Uruguay', 'Armenia']) {
       expect(tagEligibility({ locationText: null, locationTags: [country], text: '' }, rules)).toBe('restricted');

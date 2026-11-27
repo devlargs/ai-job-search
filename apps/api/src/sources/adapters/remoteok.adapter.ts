@@ -24,8 +24,8 @@ export class RemoteOkAdapter implements JobSource {
     if (!Array.isArray(body)) {
       throw new Error('Remote OK response is not an array');
     }
-    // Element 0 is the legal notice, not a job.
-    return body.slice(1).flatMap((job) => {
+    // Element 0 is the legal notice, not a job; it has no id or url, so toDraft skips it.
+    return body.flatMap((job) => {
       const draft = toDraft(job);
       return draft ? [draft] : [];
     });

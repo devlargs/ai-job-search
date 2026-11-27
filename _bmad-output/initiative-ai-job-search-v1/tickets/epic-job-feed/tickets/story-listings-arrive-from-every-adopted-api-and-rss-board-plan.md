@@ -3,14 +3,14 @@ title: 'Listings arrive from every adopted API and RSS board'
 type: feature
 ticket: '9'
 created: '2026-11-27'
-status: in-progress
+status: built
 baseline_revision: '28b1952d6f0c103d9a398c6f8128ec25600dbe2f'
 route: full
 route_source: auto
 risk: medium
-review: ''
-review_source: ''
-lenses_ran: []
+review: quick
+review_source: pinned
+lenses_ran: [quick]
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -107,6 +107,16 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-27 — Review pass
+- verdicts: 6 findings — high 0, medium 1, low 3, false 0, maybe-false 2 (5 from the quick lens and 1 from the orchestrator's own read of the implementer's live data)
+- findings:
+  - `[maybe-false]` `[defer]` AC 1 is unconfirmed for `we-work-remotely`: the boot run hit a WWR outage (503/timeout) and the 60-min throttle blocked a pipeline retry, though the adapter returned 100 valid drafts against the recovered feed. It is settled by the next pipeline run after 15:16 UTC (orchestrator check, recorded in Auto Run Result).
+  - `[maybe-false]` `[defer]` "via <board>" was not observed on the rendered page — the same gap as story 1.8's deferred web-test item (no browser check, no web tests); it is carried there, not duplicated.
+  - `[low]` `[patch]` RemoteOK dropped element 0 blindly with `slice(1)` — removed; `toDraft`'s id/url check skips the legal notice, so a moved notice can't cost a job.
+  - `[low]` `[patch]` `wales` in `otherPlaces` made "Sydney, New South Wales" restricted — added `new south wales` to `apac` (data only); spec added.
+  - `[low]` `[reject]` Jobicy's `Retry-After` on 429 is not read — the app makes at most 1 request per 30 min against a 30 req/s limit, so a 429 is not reachable in normal use, and honoring the header means new throttle plumbing, which the plan excludes.
+  - `[medium]` `[patch]` (orchestrator) WWR `<country>` went into `locationTags`, so "Anywhere in the World" items with a US company country tagged restricted (17 of 100 live) — `<country>` and `<state>` describe the company, not the hire, so WWR now maps only `<region>`; spec updated.
+
 ## Verification
 
 **Commands:**
@@ -116,3 +126,44 @@ deferred: []
   - Spot-check 5 random stored `locationText`/`locationTags` values per new source against their tag. Record any mis-tag in Implementation Notes and fix it in `eligibility-rules.json` if it is a data gap. This is the live-data check story 1.3's follow-up recommended.
   - `curl -s localhost:3000/api/feed` -- expected: items from the new sources with absolute `url`s.
   - Stop the server with `pkill -f dist/main.js` and confirm port 3000 is free.
+
+## Auto Run Result
+
+**Summary:**
+- Four new adapters behind the `JobSource` port, each registered in `SOURCES` with its throttle:
+  - `remoteok`: JSON, legal notice skipped, 60 min.
+  - `we-work-remotely`: RSS via `fast-xml-parser`, "Company: Title" split, region only, 60 min.
+  - `himalayas`: cursor paging capped at 5 pages, `applicationLink` unchanged, 30 min.
+  - `jobicy`: one unfiltered page of 50, 30 min.
+- Every adapter fetches its board's current window and ignores `since`, which closes the pruning risk deferred from story 1.4.
+- The eligibility rules gained the boards' location formats.
+- The web `SOURCE_LABEL` credits each board, and the README lists each source's credit/link rule.
+
+**Files:**
+- `packages/shared/src/source-id.ts`.
+- `apps/api/src/sources/adapters/{remoteok,we-work-remotely,himalayas,jobicy}.adapter.ts`, their specs, and `board-fetch.ts`.
+- `apps/api/src/sources/sources.module.ts`.
+- `apps/api/package.json` and `pnpm-lock.yaml` (`fast-xml-parser` 5.12.1).
+- `apps/api/src/matching/data/eligibility-rules.json` and `board-fixtures.eligibility.spec.ts`.
+- `apps/web/src/sources.ts`, `README.md`.
+
+**Review:** 6 findings.
+- 3 patched: 1 medium (WWR country) and 2 low.
+- 2 deferred (maybe-false): the WWR pipeline run, and the page check carried with story 1.8's.
+- 1 rejected: Jobicy `Retry-After`.
+
+**Follow-up review recommended:** false. One medium was patched.
+
+**Verification:**
+- `pnpm build` passes, and `pnpm test` passes 182 tests with no network.
+- Live boot run (implementer):
+  - `source_runs` `ok: true` for `remoteok` (100), `himalayas` (100) and `jobicy` (50).
+  - `we-work-remotely` failed on a WWR-side 503 and timeout. Its adapter returned 100 valid drafts directly once the feed recovered.
+  - The feed held items from remotive, remoteok, himalayas and jobicy, all with absolute `url`s.
+- The spot-check fixed the Armenia/Azerbaijan/Equatorial Guinea and "Oceania Only" tags in the data.
+
+**Residual risks:**
+- WWR's first pipeline success is still to be observed. The orchestrator checks it after 15:16 UTC.
+- An empty Himalayas `locationRestrictions` tags `unknown` (5 of 100), since whether that means worldwide is unconfirmed.
+- Most listings are restricted: Remote OK 96 of 100, Himalayas 86 of 100, Jobicy 43 of 50.
+
