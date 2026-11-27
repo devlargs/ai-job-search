@@ -12,6 +12,8 @@ export const FeedItem = z.object({
   /** ISO 8601 UTC string. */
   effectiveDate: z.iso.datetime(),
   eligibility: Eligibility,
+  /** AD-4 match score against the confirmed resume's skills; null when unscored. Computed at read, never stored. */
+  score: z.number().int().min(0).max(100).nullable(),
 });
 export type FeedItem = z.infer<typeof FeedItem>;
 

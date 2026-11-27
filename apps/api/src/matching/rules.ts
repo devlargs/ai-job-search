@@ -21,9 +21,17 @@ export const EligibilityRulesFile = z.object({
 });
 export type EligibilityRules = z.infer<typeof EligibilityRulesFile>;
 
+/** Shape of matching/data/skills.json (AD-4): canonical SkillId (lowercase kebab) -> synonyms. Key order is extractSkills' output order. */
+export const SkillsFile = z.record(
+  z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'skill ids are lowercase kebab'),
+  z.array(z.string().trim().refine((s) => /[\p{L}\p{N}]/u.test(s), 'a synonym needs a letter or digit')).min(1),
+);
+export type SkillRules = z.infer<typeof SkillsFile>;
+
 /** The parsed rules plus the hash of every matching/data/*.json file (AD-3 rulesHash). */
 export interface LoadedMatchingRules {
   eligibility: EligibilityRules;
+  skills: SkillRules;
   hash: string;
 }
 
@@ -44,7 +52,11 @@ export function computeRulesHash(dataDir: string = MATCHING_DATA_DIR): string {
 
 /** Reads and validates the rule files. Throws when a file is missing or malformed, so boot fails loudly. */
 export function loadMatchingRules(dataDir: string = MATCHING_DATA_DIR): LoadedMatchingRules {
-  const raw: unknown = JSON.parse(readFileSync(join(dataDir, 'eligibility-rules.json'), 'utf8'));
-  const eligibility = EligibilityRulesFile.parse(raw);
-  return { eligibility, hash: computeRulesHash(dataDir) };
+  const eligibility = EligibilityRulesFile.parse(readJson(dataDir, 'eligibility-rules.json'));
+  const skills = SkillsFile.parse(readJson(dataDir, 'skills.json'));
+  return { eligibility, skills, hash: computeRulesHash(dataDir) };
+}
+
+function readJson(dataDir: string, name: string): unknown {
+  return JSON.parse(readFileSync(join(dataDir, name), 'utf8'));
 }

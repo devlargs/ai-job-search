@@ -5,9 +5,15 @@ import { FeedResponse } from '@ai-job-search/shared';
 import { ErrorEnvelopeFilter } from '../common/error-envelope.filter.js';
 import type { Listing } from '../ingestion/listing.schema.js';
 import { ListingsReader, type StoredListing } from '../ingestion/listings-reader.js';
-import { ListingsService } from './listings.service.js';
+import type { ResumeSkills } from '../resume/resume-skills.js';
+import { DEFAULT_MIN_MATCH, ListingsService } from './listings.service.js';
 
-function stored(id: string, effectiveDate: string, eligibility: StoredListing['eligibility'] = 'worldwide'): StoredListing {
+function stored(
+  id: string,
+  effectiveDate: string,
+  eligibility: StoredListing['eligibility'] = 'worldwide',
+  skills: string[] = [],
+): StoredListing {
   return {
     _id: { toString: () => id },
     source: 'remotive',
@@ -23,19 +29,22 @@ function stored(id: string, effectiveDate: string, eligibility: StoredListing['e
     effectiveDate: new Date(effectiveDate),
     lastSeenAt: new Date(effectiveDate),
     eligibility,
+    skills,
     rulesHash: 'h',
   };
 }
 
 const NOW = new Date('2026-11-27T12:00:00.000Z');
 
-function serviceOver(docs: StoredListing[]) {
+const noResume = { resumeSkillSet: async () => null } as ResumeSkills;
+
+function serviceOver(docs: StoredListing[], resume: ResumeSkills = noResume) {
   const sort = vi.fn();
   const chain = { sort, lean: () => chain, exec: async () => docs };
   sort.mockReturnValue(chain);
   const find = vi.fn(() => chain);
   const model = { find } as unknown as Model<Listing>;
-  return { service: new ListingsService(new ListingsReader(model)), find, sort };
+  return { service: new ListingsService(new ListingsReader(model), resume), find, sort };
 }
 
 const allItems = (feed: FeedResponse) => [...feed.tiers.fresh, ...feed.tiers.recent, ...feed.tiers.older];
@@ -81,6 +90,41 @@ describe('feed read', () => {
     expect(find).toHaveBeenCalledWith({ eligibility: { $ne: 'restricted' } }, expect.objectContaining({ descriptionHtml: 0 }));
     expect(FeedResponse.safeParse(feed).success).toBe(true);
     expect(allItems(feed).map((i) => i.eligibility)).toEqual(['worldwide', 'apac', 'ph-friendly', 'unknown', 'unknown']);
+  });
+
+  it('gives every item a null score and hides nothing when there is no resume', async () => {
+    const docs = [
+      stored('a', '2026-11-27T10:00:00.000Z', 'worldwide', ['react', 'nestjs']),
+      stored('b', '2026-11-26T06:00:00.000Z', 'apac', ['go']),
+      stored('c', '2026-11-22T12:00:00.000Z', 'unknown'),
+      { ...stored('legacy', '2026-11-21T12:00:00.000Z'), skills: undefined } as unknown as StoredListing,
+    ];
+
+    const feed = await serviceOver(docs).service.getFeed(NOW);
+
+    expect(FeedResponse.safeParse(feed).success).toBe(true);
+    expect(allItems(feed)).toHaveLength(docs.length);
+    expect(allItems(feed).every((i) => i.score === null)).toBe(true);
+  });
+
+  it('drops scored items below minMatch, keeps unscored ones, and orders by score', async () => {
+    expect(DEFAULT_MIN_MATCH).toBe(40);
+    // 4 of 5 skills -> 80; 7 of 18 -> 39; no skills -> null.
+    const many = Array.from({ length: 18 }, (_, i) => `s${i}`);
+    const resume = { resumeSkillSet: async () => new Set(['s0', 's1', 's2', 's3', 's4', 's5', 's6']) } as ResumeSkills;
+    const docs = [
+      stored('null', '2026-11-27T11:00:00.000Z', 'worldwide', []),
+      stored('39', '2026-11-27T10:30:00.000Z', 'worldwide', many),
+      stored('80', '2026-11-27T10:00:00.000Z', 'worldwide', ['s0', 's1', 's2', 's3', 'zz']),
+    ];
+
+    const feed = await serviceOver(docs, resume).service.getFeed(NOW);
+
+    expect(FeedResponse.safeParse(feed).success).toBe(true);
+    expect(feed.tiers.fresh.map((i) => [i.id, i.score])).toEqual([
+      ['80', 80],
+      ['null', null],
+    ]);
   });
 
   it('turns a database error into a 500 error envelope', () => {

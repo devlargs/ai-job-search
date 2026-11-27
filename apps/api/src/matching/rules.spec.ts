@@ -20,7 +20,17 @@ describe('matching rules', () => {
   it('loads and validates the shipped rules file', () => {
     const loaded = loadMatchingRules();
     expect(loaded.eligibility.restrictedPhrases).toContain('us only');
+    expect(loaded.skills.react).toEqual(['react', 'reactjs', 'react.js']);
     expect(loaded.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('includes skills.json in the hash', () => {
+    const dir = copyOfData();
+    const file = join(dir, 'skills.json');
+    const skills = JSON.parse(readFileSync(file, 'utf8')) as Record<string, string[]>;
+    skills.elixir = ['elixir'];
+    writeFileSync(file, JSON.stringify(skills));
+    expect(computeRulesHash(dir)).not.toBe(computeRulesHash(MATCHING_DATA_DIR));
   });
 
   it('gives the same hash for the same content', () => {
@@ -38,8 +48,18 @@ describe('matching rules', () => {
 
   it('changes the hash when another data file is added', () => {
     const dir = copyOfData();
-    writeFileSync(join(dir, 'skills.json'), '{}');
+    writeFileSync(join(dir, 'extra.json'), '{}');
     expect(computeRulesHash(dir)).not.toBe(computeRulesHash(MATCHING_DATA_DIR));
+  });
+
+  it.each([
+    ['an empty synonym list', { react: [] }],
+    ['a non-kebab id', { React: ['react'] }],
+    ['a synonym with no letters or digits', { csharp: ['#'] }],
+  ])('rejects a skills file with %s', (_label, skills) => {
+    const dir = copyOfData();
+    writeFileSync(join(dir, 'skills.json'), JSON.stringify(skills));
+    expect(() => loadMatchingRules(dir)).toThrow();
   });
 
   it('rejects a malformed rules file', () => {

@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { loadMatchingRules, type EligibilityRules, type LoadedMatchingRules } from './rules.js';
+import { loadMatchingRules, type EligibilityRules, type LoadedMatchingRules, type SkillRules } from './rules.js';
 
 /** Injectable holder of the parsed rule files and their hash, loaded once at boot. */
 export class MatchingRules implements LoadedMatchingRules {
   constructor(
     readonly eligibility: EligibilityRules,
+    readonly skills: SkillRules,
     readonly hash: string,
   ) {}
 }
@@ -15,7 +16,7 @@ export class MatchingRules implements LoadedMatchingRules {
       provide: MatchingRules,
       useFactory: (): MatchingRules => {
         const loaded = loadMatchingRules();
-        return new MatchingRules(loaded.eligibility, loaded.hash);
+        return new MatchingRules(loaded.eligibility, loaded.skills, loaded.hash);
       },
     },
   ],

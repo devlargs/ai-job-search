@@ -4,7 +4,7 @@ import type { Model } from 'mongoose';
 import { Listing } from './listing.schema.js';
 
 export type StoredListing = Listing & { _id: { toString(): string } };
-/** A feed row: a stored listing without its (projected-out) description and rulesHash. */
+/** A feed row: a stored listing, `skills` included, without its (projected-out) description and rulesHash. */
 export type FeedListing = Omit<StoredListing, 'descriptionHtml' | 'rulesHash'>;
 
 /** Read-only access to `listings` for every module other than ingestion (AD-3). */

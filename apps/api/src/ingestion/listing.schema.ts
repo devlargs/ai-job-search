@@ -44,6 +44,10 @@ export class Listing {
   @Prop({ type: String, enum: Eligibility.options, default: 'unknown', index: true })
   eligibility!: Eligibility;
 
+  /** Canonical SkillIds from the title and description text (AD-4 extractSkills). Written only by ingestion. */
+  @Prop({ type: [String], default: [] })
+  skills!: string[];
+
   /** Hash of the matching/data/*.json files this listing was tagged with (AD-3). */
   @Prop({ type: String, default: null })
   rulesHash!: string | null;

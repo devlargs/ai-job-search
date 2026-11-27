@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ListingDraft, type Eligibility } from '@ai-job-search/shared';
 import type { AnyBulkWriteOperation, Model } from 'mongoose';
 import { MatchingRules } from '../matching/matching.module.js';
+import { extractSkills } from '../matching/extract-skills.js';
 import { tagEligibility } from '../matching/tag-eligibility.js';
 import { JOB_SOURCES, type JobSource } from '../sources/job-source.port.js';
 import { effectiveDate } from './effective-date.js';
@@ -31,25 +32,25 @@ export function retentionDays(value: unknown): number {
   return Number.isFinite(days) && days > 0 ? days : DEFAULT_RETENTION_DAYS;
 }
 
-export interface RetagSummary {
-  retagged: number;
+export interface RederiveSummary {
+  rederived: number;
   failed: number;
 }
 
-/** Listings re-tagged per bulkWrite during the boot re-tag. */
-const RETAG_BATCH = 500;
+/** Listings re-derived per bulkWrite during the boot re-derive. */
+const REDERIVE_BATCH = 500;
 
 /**
  * The ingestion pipeline (AD-3) and the only writer of `listings`.
- * Per source: throttle check -> fetch -> validate -> sanitize -> derive text -> tagEligibility -> upsert -> source_runs.
+ * Per source: throttle check -> fetch -> validate -> sanitize -> derive text -> tagEligibility -> extractSkills -> upsert -> source_runs.
  * Runs are single-flight (AD-1): a run requested while one is in progress is skipped.
- * The first run (the boot run) first re-tags stored listings whose rulesHash is not the current one.
+ * The first run (the boot run) first re-derives eligibility and skills of stored listings whose rulesHash is not the current one.
  */
 @Injectable()
 export class IngestionService {
   private readonly logger = new Logger('Ingestion');
   private running = false;
-  private retagChecked = false;
+  private rederiveChecked = false;
 
   constructor(
     @Inject(JOB_SOURCES) private readonly sources: JobSource[],
@@ -67,9 +68,9 @@ export class IngestionService {
     this.running = true;
     const startedAt = Date.now();
     try {
-      if (!this.retagChecked) {
-        this.retagChecked = true;
-        await this.retagIfRulesChanged();
+      if (!this.rederiveChecked) {
+        this.rederiveChecked = true;
+        await this.rederiveIfRulesChanged();
       }
       const outcomes: SourceOutcome[] = [];
       for (const source of this.sources) {
@@ -132,14 +133,15 @@ export class IngestionService {
   }
 
   /**
-   * AD-3: re-derive eligibility for every stored listing whose rulesHash is not
-   * the current one (a missing hash included). Streams the rows and bulk-updates
-   * them in batches. A failing row or batch is logged and skipped, never fatal.
+   * AD-3: re-derive eligibility and skills for every stored listing whose
+   * rulesHash is not the current one (a missing hash included). Streams the rows
+   * and bulk-updates them in batches. A failing row or batch is logged and
+   * skipped, never fatal.
    */
-  async retagIfRulesChanged(): Promise<RetagSummary> {
+  async rederiveIfRulesChanged(): Promise<RederiveSummary> {
     const { hash } = this.rules;
     const hints = new Map(this.sources.map((s) => [s.id as string, s.eligibilityHint]));
-    let retagged = 0;
+    let rederived = 0;
     let failed = 0;
     let stoppedEarly = false;
     let batch: AnyBulkWriteOperation<Listing>[] = [];
@@ -150,50 +152,52 @@ export class IngestionService {
       batch = [];
       try {
         await this.listings.bulkWrite(ops, { ordered: false });
-        retagged += ops.length;
+        rederived += ops.length;
       } catch (err) {
         failed += ops.length;
-        this.logger.error(`Re-tag batch of ${ops.length} failed: ${errorText(err)}`);
+        this.logger.error(`Re-derive batch of ${ops.length} failed: ${errorText(err)}`);
       }
     };
 
     try {
       const cursor = this.listings
-        .find({ rulesHash: { $ne: hash } }, { source: 1, locationText: 1, locationTags: 1, descriptionHtml: 1 })
+        .find({ rulesHash: { $ne: hash } }, { source: 1, title: 1, locationText: 1, locationTags: 1, descriptionHtml: 1 })
         .lean()
         .cursor();
-      for await (const doc of cursor as AsyncIterable<Pick<Listing, 'source' | 'locationText' | 'locationTags' | 'descriptionHtml'> & { _id: unknown }>) {
+      type Row = Pick<Listing, 'source' | 'title' | 'locationText' | 'locationTags' | 'descriptionHtml'> & { _id: unknown };
+      for await (const doc of cursor as AsyncIterable<Row>) {
         try {
-          const eligibility = tagEligibility(
+          const { eligibility, skills } = deriveTags(
             {
+              title: doc.title ?? '',
               locationText: doc.locationText ?? null,
               locationTags: doc.locationTags ?? [],
-              text: htmlToText(doc.descriptionHtml ?? ''),
-              hint: hints.get(doc.source),
+              descriptionHtml: doc.descriptionHtml ?? '',
             },
-            this.rules.eligibility,
+            this.rules,
+            hints.get(doc.source),
           );
-          batch.push({ updateOne: { filter: { _id: doc._id }, update: { $set: { eligibility, rulesHash: hash } } } });
+          batch.push({ updateOne: { filter: { _id: doc._id }, update: { $set: { eligibility, skills, rulesHash: hash } } } });
         } catch (err) {
           failed++;
-          this.logger.error(`Re-tag of listing ${String(doc._id)} failed: ${errorText(err)}`);
+          this.logger.error(`Re-derive of listing ${String(doc._id)} failed: ${errorText(err)}`);
         }
-        if (batch.length >= RETAG_BATCH) await flush();
+        if (batch.length >= REDERIVE_BATCH) await flush();
       }
       await flush();
     } catch (err) {
       stoppedEarly = true;
-      this.logger.error(`Re-tag stopped early: ${errorText(err)}`);
+      this.logger.error(`Re-derive stopped early: ${errorText(err)}`);
     }
 
     if (stoppedEarly) {
-      this.logger.error(`Re-tag incomplete for rules ${hash.slice(0, 12)}: ${retagged} re-tagged, ${failed} failed before it stopped`);
-    } else if (retagged > 0 || failed > 0) {
-      this.logger.log(`Re-tagged ${retagged} listings for rules ${hash.slice(0, 12)}${failed ? `, ${failed} failed` : ''}`);
+      this.logger.error(`Re-derive incomplete for rules ${hash.slice(0, 12)}: ${rederived} re-derived, ${failed} failed before it stopped`);
+    } else if (rederived > 0 || failed > 0) {
+      this.logger.log(`Re-derived eligibility and skills of ${rederived} listings for rules ${hash.slice(0, 12)}${failed ? `, ${failed} failed` : ''}`);
     } else {
-      this.logger.log(`Eligibility tags current for rules ${hash.slice(0, 12)}`);
+      this.logger.log(`Eligibility and skills current for rules ${hash.slice(0, 12)}`);
     }
-    return { retagged, failed };
+    return { rederived, failed };
   }
 
   /** AD-3: delete listings not seen for RETENTION_DAYS. Returns the count, or null when the delete failed (logged, not fatal). */
@@ -220,7 +224,26 @@ export class IngestionService {
   }
 }
 
-/** AD-3 upsert: the three dates are fixed at insert, everything else (eligibility included) is refreshed. */
+/**
+ * The derived fields of a listing (AD-3, AD-4): eligibility from the location, hint and
+ * description text; skills from the title plus the description text. `descriptionHtml`
+ * must already be sanitized.
+ */
+function deriveTags(
+  listing: { title: string; locationText: string | null; locationTags: string[]; descriptionHtml: string },
+  rules: MatchingRules,
+  hint?: Eligibility,
+): { eligibility: Eligibility; skills: string[] } {
+  const text = htmlToText(listing.descriptionHtml);
+  const eligibility = tagEligibility(
+    { locationText: listing.locationText, locationTags: listing.locationTags, text, hint },
+    rules.eligibility,
+  );
+  const skills = extractSkills(`${listing.title} ${text}`, rules.skills);
+  return { eligibility, skills };
+}
+
+/** AD-3 upsert: the three dates are fixed at insert, everything else (eligibility and skills included) is refreshed. */
 export function upsertOp(
   source: string,
   draft: ListingDraft,
@@ -229,9 +252,10 @@ export function upsertOp(
   hint?: Eligibility,
 ): AnyBulkWriteOperation<Listing> {
   const descriptionHtml = sanitizeHtml(draft.descriptionHtml);
-  const eligibility = tagEligibility(
-    { locationText: draft.locationText, locationTags: draft.locationTags, text: htmlToText(descriptionHtml), hint },
-    rules.eligibility,
+  const { eligibility, skills } = deriveTags(
+    { title: draft.title, locationText: draft.locationText, locationTags: draft.locationTags, descriptionHtml },
+    rules,
+    hint,
   );
   return {
     updateOne: {
@@ -252,6 +276,7 @@ export function upsertOp(
           locationTags: draft.locationTags,
           lastSeenAt: now,
           eligibility,
+          skills,
           rulesHash: rules.hash,
         },
       },

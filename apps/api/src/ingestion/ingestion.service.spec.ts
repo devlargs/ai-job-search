@@ -10,7 +10,7 @@ import type { Listing } from './listing.schema.js';
 import type { SourceRun } from './source-run.schema.js';
 
 const loaded = loadMatchingRules();
-const rules = new MatchingRules(loaded.eligibility, loaded.hash);
+const rules = new MatchingRules(loaded.eligibility, loaded.skills, loaded.hash);
 
 type StoredRow = Partial<Listing> & { _id: string };
 
@@ -18,7 +18,7 @@ type StoredRow = Partial<Listing> & { _id: string };
 function fakeModels(existingRuns: SourceRun[] = [], storedListings: StoredRow[] = [], deleteResult: { deletedCount: number } | Error = { deletedCount: 0 }) {
   const runs: SourceRun[] = [...existingRuns];
   const bulkWrite = vi.fn(async (_ops: unknown[]) => ({}));
-  const find = vi.fn((filter: { rulesHash: { $ne: string } }) => {
+  const find = vi.fn((filter: { rulesHash: { $ne: string } }, _projection?: Record<string, number>) => {
     const rows = storedListings.filter((row) => row.rulesHash !== filter.rulesHash.$ne);
     const chain = {
       lean: () => chain,
@@ -91,7 +91,7 @@ type UpsertOps = Array<{
   updateOne: { filter: unknown; upsert: boolean; update: { $setOnInsert: Record<string, unknown>; $set: Record<string, unknown> } };
 }>;
 
-/** The upsert batch the given run wrote, skipping any re-tag batches. */
+/** The upsert batch the given run wrote, skipping any re-derive batches. */
 function upsertCall(bulkWrite: ReturnType<typeof fakeModels>['bulkWrite'], index = 0): UpsertOps {
   const calls = bulkWrite.mock.calls
     .map((c) => c[0] as UpsertOps)
@@ -324,9 +324,10 @@ describe('IngestionService', () => {
     expect(update.$setOnInsert.effectiveDate).toEqual(postedAt);
     expect(update.$setOnInsert.firstSeenAt).toBeInstanceOf(Date);
     expect(Object.keys(update.$set).sort()).toEqual(
-      ['company', 'descriptionHtml', 'eligibility', 'lastSeenAt', 'locationTags', 'locationText', 'rulesHash', 'title', 'url'].sort(),
+      ['company', 'descriptionHtml', 'eligibility', 'lastSeenAt', 'locationTags', 'locationText', 'rulesHash', 'skills', 'title', 'url'].sort(),
     );
     expect(update.$set.eligibility).toBe('worldwide');
+    expect(update.$set.skills).toEqual([]);
     expect(update.$set.rulesHash).toBe(rules.hash);
     expect(update.$set.lastSeenAt).toEqual(update.$setOnInsert.firstSeenAt);
     expect(update.$set.descriptionHtml).toBe('<p>Hello</p>');
@@ -386,6 +387,18 @@ describe('IngestionService', () => {
     expect(tags).toEqual(['restricted', 'ph-friendly']);
   });
 
+  it('extracts skills at ingest from the title plus the sanitized description text', async () => {
+    const m = fakeModels();
+    const source = fakeSource('remotive', async () => [
+      draft({ title: 'Senior ReactJS Engineer', descriptionHtml: '<p>Backend in <b>Nest.js</b> on AWS.</p><script>golang()</script>' }),
+    ]);
+    const service = new IngestionService([source], m.listings, m.runModel, rules);
+
+    await service.run();
+
+    expect(upsertCall(m.bulkWrite)[0]!.updateOne.update.$set.skills).toEqual(['react', 'nestjs', 'aws']);
+  });
+
   it('reads description phrases from the sanitized text when there is no location or hint', async () => {
     const m = fakeModels();
     const source = fakeSource('remotive', async () => [
@@ -398,13 +411,13 @@ describe('IngestionService', () => {
     expect(upsertCall(m.bulkWrite)[0]!.updateOne.update.$set.eligibility).toBe('restricted');
   });
 
-  it('re-tags at boot the rows with a stale or missing rulesHash and leaves current ones alone', async () => {
+  it('re-derives at boot the rows with a stale or missing rulesHash and leaves current ones alone', async () => {
     const m = fakeModels(
       [],
       [
-        { _id: 'stale', source: 'remotive', locationText: 'US Only', locationTags: [], descriptionHtml: '', rulesHash: 'old' },
-        { _id: 'legacy', source: 'remotive', locationText: 'Worldwide', locationTags: [], descriptionHtml: '' },
-        { _id: 'current', source: 'remotive', locationText: 'APAC', locationTags: [], descriptionHtml: '', rulesHash: rules.hash },
+        { _id: 'stale', source: 'remotive', title: 'ReactJS Engineer', locationText: 'US Only', locationTags: [], descriptionHtml: '<p>We use <b>Nest.js</b></p>', rulesHash: 'old' },
+        { _id: 'legacy', source: 'remotive', title: 'Engineer', locationText: 'Worldwide', locationTags: [], descriptionHtml: '' },
+        { _id: 'current', source: 'remotive', title: 'React dev', locationText: 'APAC', locationTags: [], descriptionHtml: '', rulesHash: rules.hash },
       ],
     );
     const service = new IngestionService([fakeSource('remotive', async () => [])], m.listings, m.runModel, rules);
@@ -412,14 +425,16 @@ describe('IngestionService', () => {
     await service.run();
 
     expect(m.find).toHaveBeenCalledWith({ rulesHash: { $ne: rules.hash } }, expect.anything());
-    const retag = m.bulkWrite.mock.calls[0]![0] as Array<{ updateOne: { filter: { _id: string }; update: { $set: Record<string, unknown> } } }>;
-    expect(retag.map((op) => [op.updateOne.filter._id, op.updateOne.update.$set])).toEqual([
-      ['stale', { eligibility: 'restricted', rulesHash: rules.hash }],
-      ['legacy', { eligibility: 'worldwide', rulesHash: rules.hash }],
+    expect(m.find.mock.calls[0]![1]).toMatchObject({ title: 1, descriptionHtml: 1 });
+    const rederive = m.bulkWrite.mock.calls[0]![0] as Array<{ updateOne: { filter: { _id: string }; update: { $set: Record<string, unknown> } } }>;
+    expect(rederive.map((op) => [op.updateOne.filter._id, op.updateOne.update.$set])).toEqual([
+      ['stale', { eligibility: 'restricted', skills: ['react', 'nestjs'], rulesHash: rules.hash }],
+      ['legacy', { eligibility: 'worldwide', skills: [], rulesHash: rules.hash }],
     ]);
+    expect(logSpy.mock.calls.some(([msg]) => String(msg).startsWith('Re-derived eligibility and skills of 2 listings'))).toBe(true);
   });
 
-  it('uses the source hint when re-tagging a stored row', async () => {
+  it('uses the source hint when re-deriving a stored row', async () => {
     const m = fakeModels([], [{ _id: 'x', source: 'remotive', locationText: null, locationTags: [], descriptionHtml: '' }]);
     const service = new IngestionService(
       [fakeSource('remotive', async () => [], undefined, 'ph-friendly')],
@@ -428,14 +443,15 @@ describe('IngestionService', () => {
       rules,
     );
 
-    const summary = await service.retagIfRulesChanged();
+    const summary = await service.rederiveIfRulesChanged();
 
-    expect(summary).toEqual({ retagged: 1, failed: 0 });
-    const retag = m.bulkWrite.mock.calls[0]![0] as Array<{ updateOne: { update: { $set: Record<string, unknown> } } }>;
-    expect(retag[0]!.updateOne.update.$set.eligibility).toBe('ph-friendly');
+    expect(summary).toEqual({ rederived: 1, failed: 0 });
+    const rederive = m.bulkWrite.mock.calls[0]![0] as Array<{ updateOne: { update: { $set: Record<string, unknown> } } }>;
+    expect(rederive[0]!.updateOne.update.$set.eligibility).toBe('ph-friendly');
+    expect(rederive[0]!.updateOne.update.$set.skills).toEqual([]);
   });
 
-  it('logs a failed re-tag batch without failing the run', async () => {
+  it('logs a failed re-derive batch without failing the run', async () => {
     const m = fakeModels([], [{ _id: 'x', source: 'remotive', locationText: 'Worldwide', locationTags: [], descriptionHtml: '' }]);
     m.bulkWrite.mockRejectedValueOnce(new Error('write conflict'));
     const source = fakeSource('remotive', async () => [draft()]);
@@ -447,11 +463,11 @@ describe('IngestionService', () => {
     expect(source.fetch).toHaveBeenCalledOnce();
   });
 
-  it('re-tags only on the first run, ahead of any fetch', async () => {
+  it('re-derives only on the first run, ahead of any fetch', async () => {
     const m = fakeModels([], [{ _id: 'x', source: 'remotive', locationText: 'Worldwide', locationTags: [], descriptionHtml: '' }]);
     const order: string[] = [];
     m.find.mockImplementation(((filter: { rulesHash: { $ne: string } }) => {
-      order.push('retag');
+      order.push('rederive');
       const chain = { lean: () => chain, cursor: () => (async function* () {})() };
       void filter;
       return chain;
@@ -465,7 +481,7 @@ describe('IngestionService', () => {
     await service.run();
     await service.run();
 
-    expect(order).toEqual(['retag', 'fetch', 'fetch']);
+    expect(order).toEqual(['rederive', 'fetch', 'fetch']);
     expect(m.find).toHaveBeenCalledOnce();
   });
 });

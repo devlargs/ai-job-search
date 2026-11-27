@@ -1,5 +1,6 @@
 import type { Eligibility } from '@ai-job-search/shared';
 import type { EligibilityRules } from './rules.js';
+import { mentions, normalize } from './text-match.js';
 
 export interface EligibilityInput {
   locationText: string | null;
@@ -8,18 +9,6 @@ export interface EligibilityInput {
   text: string;
   /** The source's known default (JobSource.eligibilityHint). */
   hint?: Eligibility | null;
-}
-
-/** Lowercases and turns every run of non-letters/digits into one space, padded, for whole-word matching. */
-function normalize(value: string): string {
-  return ` ${value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()} `;
-}
-
-function mentions(haystack: string, phrases: string[]): boolean {
-  return phrases.some((phrase) => {
-    const needle = normalize(phrase);
-    return needle.trim() !== '' && haystack.includes(needle);
-  });
 }
 
 /**
